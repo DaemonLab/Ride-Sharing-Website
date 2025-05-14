@@ -29,7 +29,7 @@ export const initDb = async () => {
         picture TEXT,
         access_token TEXT,
         refresh_token TEXT,
-        token_expiry TIMESTAMP
+        token_expiry TIMESTAMP,
         isAdmin BOOLEAN DEFAULT FALSE,
       )
     `);
