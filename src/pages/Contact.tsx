@@ -10,9 +10,49 @@ export default function Contact() {
     message: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [status, setStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({
+    type: null,
+    message: ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Add form submission logic here
+    try {
+      console.log("Submitting form data:", formData);
+      // Change the URL to your backend endpoint
+      const response = await fetch('http://localhost:3000/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+      console.log("Response from server:", response);
+
+      if (response.ok) {
+        setStatus({
+          type: 'success',
+          message: 'Thank you! Your message has been sent successfully.'
+        });
+        setFormData({
+          name: '',
+          email: '',
+          subject: '',
+          message: ''
+        });
+      } else {
+        throw new Error('Failed to send message');
+      }
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        message: 'Failed to send message. Please try again later.'
+      });
+    }
   };
 
   return (
@@ -112,6 +152,18 @@ export default function Contact() {
                     required
                   />
                 </div>
+                {status.message && (
+                <div
+                  className={`p-4 rounded-lg ${
+                    status.type === 'success'
+                      ? 'bg-green-50 text-green-700 border border-green-200'
+                      : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}
+                  role="alert"
+                >
+                  <p className="text-sm font-medium">{status.message}</p>
+                </div>
+            )}
                 <Button type="submit" className="w-full">
                   <Send className="w-4 h-4 mr-2" />
                   Send Message

@@ -6,6 +6,7 @@ import rideRoutes from "./routes/rideRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import requestRoutes from "./routes/requestRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 
 const app = express();
 app.use(cors());
@@ -18,6 +19,7 @@ app.use("/rides", rideRoutes);
 app.use("/chat", chatRoutes); 
 app.use("/request", requestRoutes); 
 app.use("/user", userRoutes); 
+app.use(supportRoutes)
 
 
 
