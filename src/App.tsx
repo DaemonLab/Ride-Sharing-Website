@@ -14,12 +14,14 @@ import BookRide from './pages/BookRide';
 import BookingSuccess from './pages/BookingSuccess';
 import GroupMembers from './pages/GroupMembers';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+// import Sidebar from './components/Sidebar';
 
 function App() {
   return (
     <Router>
       <div className="min-h-screen flex flex-col">
         <Header />
+        {/* <Sidebar/> */}
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />

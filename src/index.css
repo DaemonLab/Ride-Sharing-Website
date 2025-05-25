@@ -9,3 +9,15 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 }
+
+@font-face {
+  font-family: 'NeueMachina'; /* Choose a name for your font */
+  src: url('../src/assets/NeueMachina-Regular.otf') format('truetype'); /* Adjust the path and format */
+  /* You can add more src lines for different font formats */
+  font-weight: normal;
+  font-style: normal;
+}
+
+.custom-text {
+  font-family: 'NeueMachina';
+}

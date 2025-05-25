@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { User, MapPin, Calendar, Clock, Users } from 'lucide-react';
 import Button from '../components/Button';
+import Chat from './Chat'
 
 interface Member {
   name: string;
@@ -70,7 +71,7 @@ export default function GroupMembers() {
         </div>
 
         {/* Members List */}
-        <div className="max-w-2xl mx-auto">
+        {/* <div className="max-w-2xl mx-auto">
           <h2 className="text-xl font-semibold mb-4">Members ({groupDetails.members.length})</h2>
           <div className="space-y-4">
             {groupDetails.members.map((member, index) => (
@@ -92,7 +93,7 @@ export default function GroupMembers() {
           </div>
         </div>
 
-        {/* Back Button */}
+       
         <div className="max-w-2xl mx-auto mt-8">
           <Button 
             variant="secondary"
@@ -102,7 +103,10 @@ export default function GroupMembers() {
             Back to Rides
           </Button>
         </div>
-      </div>
+        */}
+      </div> 
+      
+      <Chat/>
     </div>
   );
 }
