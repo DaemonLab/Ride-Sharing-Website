@@ -1,5 +1,5 @@
 import express from "express";
-import { pool, initDb } from "./config/db.js";
+import pool, { initDb } from "./config/db.js";
 import cors from "cors";
 import bodyParser from "body-parser";
 import rideRoutes from "./routes/rideRoutes.js";

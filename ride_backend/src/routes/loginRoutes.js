@@ -1,5 +1,5 @@
 import express from "express";
-import { loginRedirect, googleCallback, getNewToken, logout } from "../controllers/loginController";
+import { loginRedirect, googleCallback, getNewToken, logout } from "../controllers/loginController.js";
 
 const router = express.Router()
 

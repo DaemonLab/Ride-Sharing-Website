@@ -1,7 +1,9 @@
-import { UserModel } from "../models/userModel.js";
+import { getUserById, update } from "../models/userModel.js";
 import jwt from "jsonwebtoken";
-import oauth2Client from "../controllers/loginController.js";
-require('dotenv').config();
+import { oauth2Client } from "../controllers/loginController.js";
+import { config } from "dotenv";
+
+config();
 
 export const authenticateJWT = async (req, res, next) => {
   try {
@@ -14,7 +16,7 @@ export const authenticateJWT = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
 
-    const user = await UserModel.findById(decoded.id);
+    const user = await getUserById(decoded.id);
 
     if (!user) {
       req.user = null;
@@ -40,7 +42,7 @@ export const authenticateJWT = async (req, res, next) => {
           updateData.refreshToken = credentials.refresh_token;
         }
 
-        await UserModel.update(user.id, updateData);
+        await update(user.id, updateData);
       } catch (refreshError) {
         console.error('Error refreshing token:', refreshError);
       }

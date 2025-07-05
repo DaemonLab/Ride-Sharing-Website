@@ -1,7 +1,9 @@
 import { google } from 'googleapis';
 import axios from 'axios';
-import { generateToken, isEmailAllowed } from '../utils';
-require('dotenv').config();
+import { generateToken, isEmailAllowed } from '../utils.js';
+import { config } from 'dotenv';
+
+config();
 
 export const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
