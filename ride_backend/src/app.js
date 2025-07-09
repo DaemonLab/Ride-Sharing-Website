@@ -17,7 +17,7 @@ dotenv.config();
 var PgSession = connectPg(session);
 const app = express();
 initDb();
-app.use(cors());
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true })); // Allow CORS from the frontend URL
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 

@@ -8,11 +8,16 @@ export async function Details() {
     WHERE id = $1
     `;
     const values = [1];
+    let client;
     try {
-        const response = await pool.query(query, values);
+        client = await pool.connect();
+        const response = await client.query(query, values);
         return response.rows;
     } catch (error) {
+        console.error('Database error in Details:', error);
         throw new Error(error.message);
+    } finally {
+        if (client) client.release();
     }
 }
 
@@ -24,12 +29,16 @@ export async function getUserById(id) {
     WHERE id = $1
     `;
     const values = [id];
+    let client;
     try {
-        const response = await pool.query(query, values);
+        client = await pool.connect();
+        const response = await client.query(query, values);
         return response.rows[0];
-    }
-    catch (error) {
+    } catch (error) {
+        console.error('Database error in getUserById:', error);
         throw new Error(error.message);
+    } finally {
+        if (client) client.release();
     }
 }
 

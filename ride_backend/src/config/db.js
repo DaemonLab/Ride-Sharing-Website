@@ -16,6 +16,17 @@ const pool = new Pool({
     require: true,
     rejectUnauthorized: false,
   },
+  max: 5, // Reduce max connections for cloud DB
+  idleTimeoutMillis: 300000, // 5 minutes
+  connectionTimeoutMillis: 10000, // 10 seconds
+  query_timeout: 30000, // 30 seconds
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 0,
+  statement_timeout: 30000, // 30 seconds
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
 });
 
 export const initDb = async () => {
@@ -34,7 +45,6 @@ export const initDb = async () => {
     console.log('Database tables initialized');
   } catch (err) {
     console.error('Error initializing database tables:', err);
-    process.exit(1);
   }
 };
 

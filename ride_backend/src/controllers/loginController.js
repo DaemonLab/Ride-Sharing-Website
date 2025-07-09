@@ -5,6 +5,8 @@ import { config } from 'dotenv';
 
 config();
 
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
 // Validate environment variables
 function validateEnvVars() {
   const required = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'REDIRECT_URL'];
@@ -43,18 +45,17 @@ export const loginRedirect = (req, res) => {
   }
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent',
+    prompt: 'select_account',
     scope: SCOPES,
   });
   res.redirect(authUrl);
 }
 
 export const googleCallback = async (req, res) => {
-  const { code, state } = req.query;
+  const { code } = req.query;
 
   console.log('OAuth callback received:');
   console.log('Code length:', code ? code.length : 'No code');
-  console.log('State:', state);
   console.log('Session ID:', req.sessionID);
 
   if (!code) {
@@ -80,7 +81,9 @@ export const googleCallback = async (req, res) => {
     const payload = ticket.getPayload();
 
     if (!isEmailAllowed(payload.email)) {
-      return res.status(403).json({ error: 'Email domain not allowed' });
+      console.error('Email domain not allowed:', payload.email);
+      // Redirect to frontend with error message
+      return res.redirect(`${FRONTEND_URL}/signin?status=error&message=${encodeURIComponent('Email domain not allowed')}`);
     }
 
     let user = await findByGoogleId(payload.sub);
@@ -114,10 +117,7 @@ export const googleCallback = async (req, res) => {
     };
 
     req.session.refreshToken = tokens.refresh_token;
-    res.status(200).json({
-      message: 'Authentication successful',
-      user: req.session.user
-    });
+    res.redirect(`${FRONTEND_URL}/profile?status=success`);
 
   } catch (error) {
     console.error('Error during authentication:', error);
@@ -129,13 +129,8 @@ export const googleCallback = async (req, res) => {
       console.error('2. Authorization code expired (10 minutes limit)');
       console.error('3. Clock skew between client and server');
       console.error('4. Incorrect redirect URI');
-      return res.status(401).json({
-        error: 'Authentication failed: Invalid authorization code',
-        details: 'The authorization code may have expired or already been used'
-      });
     }
-
-    res.status(401).json({ error: 'Authentication failed' });
+    res.redirect(`${FRONTEND_URL}/signin?status=error&message=${encodeURIComponent(error.message)}`);
   }
 }
 
