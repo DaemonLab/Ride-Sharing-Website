@@ -1,9 +1,27 @@
 import { google } from 'googleapis';
-import axios from 'axios';
-import { generateToken, isEmailAllowed } from '../utils.js';
+import { isEmailAllowed } from '../utils.js';
+import { findByGoogleId, create, update } from '../models/userModel.js';
 import { config } from 'dotenv';
 
 config();
+
+// Validate environment variables
+function validateEnvVars() {
+  const required = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'REDIRECT_URL'];
+  const missing = required.filter(env => !process.env[env]);
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+
+  console.log('Google OAuth Environment Variables:');
+  console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
+  console.log('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
+  console.log('REDIRECT_URL:', process.env.REDIRECT_URL);
+}
+
+// Validate on startup
+validateEnvVars();
 
 export const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -17,88 +35,131 @@ const SCOPES = [
 ];
 
 export const loginRedirect = (req, res) => {
+  if (req.session.user) {
+    return res.status(200).json({
+      message: 'User already authenticated',
+      user: req.session.user
+    });
+  }
   const authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline', // Request refresh token
-    prompt: 'consent',      // Force consent screen for refresh token
-    scope: SCOPES
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: SCOPES,
   });
   res.redirect(authUrl);
 }
 
 export const googleCallback = async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
+
+  console.log('OAuth callback received:');
+  console.log('Code length:', code ? code.length : 'No code');
+  console.log('State:', state);
+  console.log('Session ID:', req.sessionID);
+
+  if (!code) {
+    return res.status(400).json({ error: 'Authorization code not provided' });
+  }
 
   try {
-    const { tokens } = await oauth2Client.getToken(code);
+    // Clear any existing credentials to avoid conflicts
+    oauth2Client.setCredentials({});
 
-    const userInfo = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    console.log('Attempting to exchange code for tokens...');
+    const { tokens } = await oauth2Client.getToken(code);
+    console.log('Tokens received successfully');
+
+    // Set the credentials for this request
+    oauth2Client.setCredentials(tokens);
+
+    const ticket = await oauth2Client.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID
     });
 
-    const { sub: googleId, email, name, picture } = userInfo.data;
+    const payload = ticket.getPayload();
 
-    if (!isEmailAllowed(email)) {
+    if (!isEmailAllowed(payload.email)) {
       return res.status(403).json({ error: 'Email domain not allowed' });
     }
 
-    let user = await UserModel.findByGoogleId(googleId);
+    let user = await findByGoogleId(payload.sub);
 
     if (user) {
       const updateData = {
-        accessToken: tokens.access_token,
-        tokenExpiry: new Date(tokens.expiry_date)
+        googleId: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
       };
 
-      if (tokens.refresh_token) {
-        updateData.refreshToken = tokens.refresh_token;
-      }
+      user = await update(user.id, updateData);
 
-      user = await UserModel.update(user.id, updateData);
     } else {
-      user = await UserModel.create({
-        googleId,
-        email,
-        name,
-        picture,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        tokenExpiry: new Date(tokens.expiry_date)
+      user = await create({
+        googleId: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
       });
     }
 
-    const token = generateToken(user);
+    req.session.user = {
+      id: user.id,
+      googleId: user.googleId,
+      email: user.email,
+      name: user.name,
+      picture: user.picture,
+      isAdmin: user.isadmin
+    };
 
-    res.cookie('jwt', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    req.session.refreshToken = tokens.refresh_token;
+    res.status(200).json({
+      message: 'Authentication successful',
+      user: req.session.user
     });
-
-    res.redirect('/');
 
   } catch (error) {
     console.error('Error during authentication:', error);
-    res.status(500).send('Authentication failed');
+
+    // More specific error handling
+    if (error.message.includes('invalid_grant')) {
+      console.error('Invalid grant error - possible causes:');
+      console.error('1. Authorization code already used');
+      console.error('2. Authorization code expired (10 minutes limit)');
+      console.error('3. Clock skew between client and server');
+      console.error('4. Incorrect redirect URI');
+      return res.status(401).json({
+        error: 'Authentication failed: Invalid authorization code',
+        details: 'The authorization code may have expired or already been used'
+      });
+    }
+
+    res.status(401).json({ error: 'Authentication failed' });
   }
 }
 
-export const getNewToken = (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+export const getStatus = (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ isAuthenticated: false, user: null });
   }
 
-  const token = generateToken(req.user);
-
-  res.cookie('jwt', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  return res.status(200).json({
+    isAuthenticated: true,
+    user: req.session.user
   });
-
-  res.json({ success: true });
 }
 
 export const logout = (req, res) => {
-  res.clearCookie('jwt');
-  res.redirect('/');
+  if (!req.session.user) {
+    return res.status(400).json({ error: 'No user session found' });
+  }
+  req.session.destroy(err => {
+    if (err) {
+      console.error('Error during logout:', err);
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    res.clearCookie('connect.sid'); // Clear session cookie
+    res.status(200).json({ message: 'Logged out successfully' });
+  });
 }

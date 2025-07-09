@@ -27,9 +27,6 @@ export const initDb = async () => {
         email VARCHAR(255) NOT NULL,
         name VARCHAR(255),
         picture TEXT,
-        access_token TEXT,
-        refresh_token TEXT,
-        token_expiry TIMESTAMP,
         isAdmin BOOLEAN DEFAULT FALSE
       )
     `);

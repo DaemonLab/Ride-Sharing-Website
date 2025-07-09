@@ -44,17 +44,14 @@ export async function findByGoogleId(googleId) {
 export async function create(userData) {
     const result = await pool.query(
         `INSERT INTO users 
-       (google_id, email, name, picture, access_token, refresh_token, token_expiry)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       (google_id, email, name, picture)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
         [
             userData.googleId,
             userData.email,
             userData.name,
             userData.picture,
-            userData.accessToken,
-            userData.refreshToken,
-            userData.tokenExpiry
         ]
     );
     return result.rows[0];
@@ -64,21 +61,6 @@ export async function update(id, userData) {
     let query = 'UPDATE users SET ';
     const params = [];
     const values = [];
-
-    if (userData.accessToken) {
-        params.push(`access_token = $${values.length + 1}`);
-        values.push(userData.accessToken);
-    }
-
-    if (userData.refreshToken) {
-        params.push(`refresh_token = $${values.length + 1}`);
-        values.push(userData.refreshToken);
-    }
-
-    if (userData.tokenExpiry) {
-        params.push(`token_expiry = $${values.length + 1}`);
-        values.push(userData.tokenExpiry);
-    }
 
     if (userData.name) {
         params.push(`name = $${values.length + 1}`);
