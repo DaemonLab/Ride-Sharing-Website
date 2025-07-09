@@ -11,6 +11,7 @@ import userRoutes from "./routes/userRoutes.js";
 import loginRoutes from "./routes/loginRoutes.js";
 import dotenv from "dotenv";
 import { authenticate, isAdmin } from "./middleware/authMiddleware.js";
+import { logger } from "./config/logger.js";
 
 dotenv.config();
 
@@ -51,9 +52,9 @@ app.use("/user", isAdmin, userRoutes);
 async function connectDB() {
   try {
     await pool.connect();
-    console.log("PostgreSQL connected");
+    logger.log("info", "PostgreSQL connected");
   } catch (err) {
-    console.error("Database connection error:", err);
+    logger.log("error", "Database connection error:", err);
   }
 }
 

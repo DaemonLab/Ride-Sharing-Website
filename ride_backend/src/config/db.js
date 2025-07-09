@@ -1,10 +1,10 @@
 import pkg from "pg";
 import dotenv from "dotenv";
+import { logger } from "./logger.js";
 
 dotenv.config();
 
 const { Pool } = pkg;
-
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -26,7 +26,7 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  logger.error('Unexpected error on idle client', err);
 });
 
 export const initDb = async () => {
@@ -42,9 +42,9 @@ export const initDb = async () => {
       )
     `);
 
-    console.log('Database tables initialized');
+    logger.info('Database tables initialized');
   } catch (err) {
-    console.error('Error initializing database tables:', err);
+    logger.error('Error initializing database tables:', err);
   }
 };
 

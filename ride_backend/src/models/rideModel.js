@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import { logger } from "../config/logger.js";
 
 export async function getPendingRides(body) {
   const query = `
@@ -13,9 +14,10 @@ export async function getPendingRides(body) {
   const values = ["Pending", body.email, 0];
   try {
     const response = await pool.query(query, values);
-    console.log("Checked database successfully");
+    logger.info("Checked database successfully");
     return response.rows;
   } catch (error) {
+    logger.error(`Error fetching pending rides: ${error.message}`);
     throw new Error(error.message);
   }
 }
@@ -48,9 +50,10 @@ export async function getFilteredPendingRides(body) {
   }
   try {
     const response = await pool.query(query, values);
-    console.log("Database checked successfully");
+    logger.info("Database checked successfully");
     return response.rows;
   } catch (error) {
+    logger.error(`Error fetching filtered pending rides: ${error.message}`);
     throw new Error(error.message);
   }
 }
@@ -90,7 +93,9 @@ export async function addNewlyCreatedRide(body) {
   ];
   try {
     await pool.query(query, values);
+    logger.info("Newly created ride added successfully");
   } catch (error) {
+    logger.error(`Error adding newly created ride: ${error.message}`);
     throw new Error(error.message);
   }
 }

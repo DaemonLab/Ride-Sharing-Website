@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { isEmailAllowed } from '../utils.js';
 import { findByGoogleId, create, update } from '../models/userModel.js';
 import { config } from 'dotenv';
+import { logger } from '../config/logger.js';
 
 config();
 
@@ -16,10 +17,10 @@ function validateEnvVars() {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
 
-  console.log('Google OAuth Environment Variables:');
-  console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
-  console.log('GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
-  console.log('REDIRECT_URL:', process.env.REDIRECT_URL);
+  logger.info('Google OAuth Environment Variables:');
+  logger.info(`GOOGLE_CLIENT_ID: ${process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing'}`);
+  logger.info(`GOOGLE_CLIENT_SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing'}`);
+  logger.info(`REDIRECT_URL: ${process.env.REDIRECT_URL}`);
 }
 
 // Validate on startup
@@ -54,9 +55,9 @@ export const loginRedirect = (req, res) => {
 export const googleCallback = async (req, res) => {
   const { code } = req.query;
 
-  console.log('OAuth callback received:');
-  console.log('Code length:', code ? code.length : 'No code');
-  console.log('Session ID:', req.sessionID);
+  logger.info('OAuth callback received:');
+  logger.info(`Code length: ${code ? code.length : 'No code'}`);
+  logger.info(`Session ID: ${req.sessionID}`);
 
   if (!code) {
     return res.status(400).json({ error: 'Authorization code not provided' });
@@ -66,9 +67,9 @@ export const googleCallback = async (req, res) => {
     // Clear any existing credentials to avoid conflicts
     oauth2Client.setCredentials({});
 
-    console.log('Attempting to exchange code for tokens...');
+    logger.info('Attempting to exchange code for tokens...');
     const { tokens } = await oauth2Client.getToken(code);
-    console.log('Tokens received successfully');
+    logger.info('Tokens received successfully');
 
     // Set the credentials for this request
     oauth2Client.setCredentials(tokens);
@@ -81,7 +82,7 @@ export const googleCallback = async (req, res) => {
     const payload = ticket.getPayload();
 
     if (!isEmailAllowed(payload.email)) {
-      console.error('Email domain not allowed:', payload.email);
+      logger.error(`Email domain not allowed: ${payload.email}`);
       // Redirect to frontend with error message
       return res.redirect(`${FRONTEND_URL}/signin?status=error&message=${encodeURIComponent('Email domain not allowed')}`);
     }
@@ -120,15 +121,15 @@ export const googleCallback = async (req, res) => {
     res.redirect(`${FRONTEND_URL}/profile?status=success`);
 
   } catch (error) {
-    console.error('Error during authentication:', error);
+    logger.error(`Error during authentication: ${error}`);
 
     // More specific error handling
     if (error.message.includes('invalid_grant')) {
-      console.error('Invalid grant error - possible causes:');
-      console.error('1. Authorization code already used');
-      console.error('2. Authorization code expired (10 minutes limit)');
-      console.error('3. Clock skew between client and server');
-      console.error('4. Incorrect redirect URI');
+      logger.error(`Invalid grant error - possible causes:`);
+      logger.error(`1. Authorization code already used`);
+      logger.error(`2. Authorization code expired (10 minutes limit)`);
+      logger.error(`3. Clock skew between client and server`);
+      logger.error(`4. Incorrect redirect URI`);
     }
     res.redirect(`${FRONTEND_URL}/signin?status=error&message=${encodeURIComponent(error.message)}`);
   }
@@ -151,7 +152,7 @@ export const logout = (req, res) => {
   }
   req.session.destroy(err => {
     if (err) {
-      console.error('Error during logout:', err);
+      logger.error('Error during logout:', err);
       return res.status(500).json({ error: 'Logout failed' });
     }
     res.clearCookie('connect.sid'); // Clear session cookie
