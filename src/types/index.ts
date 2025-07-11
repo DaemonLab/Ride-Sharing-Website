@@ -30,3 +30,10 @@ export interface User {
   profilePicture?: string;
   isAdmin?: boolean;
 }
+
+export interface UserProfile {
+  studentId: string;
+  name: string;
+  email: string;
+  photoUrl?: string; // Optional field for profile photo
+}

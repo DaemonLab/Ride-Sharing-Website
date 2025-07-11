@@ -41,13 +41,16 @@ app.use(session({
 }));
 
 
+app.use("/health", (req, res) => {
+  res.status(200).json({ status: "OK" });
+});
 app.use("/auth", loginRoutes);
 
 app.use(authenticate);
 app.use("/rides", rideRoutes);
 app.use("/chat", chatRoutes);
 app.use("/request", requestRoutes);
-app.use("/user", isAdmin, userRoutes);
+app.use("/user", userRoutes);
 
 async function connectDB() {
   try {

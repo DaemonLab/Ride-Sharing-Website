@@ -1,110 +1,60 @@
-import React, { useState } from 'react';
-import { User, Star, Clock, MapPin, Mail, Phone, Camera, Calendar, Car, X } from 'lucide-react';
-import Button from '../components/Button';
+import { useEffect, useState } from "react";
+import {
+  User,
+  Star,
+  Clock,
+  MapPin,
+  Mail,
+  Camera,
+  Calendar,
+  Car,
+} from "lucide-react";
+import Button from "../components/Button";
+import { UserProfile } from "../types";
 
-interface UserProfile {
-  name: string;
-  studentId: string;
-  email: string;
-  phone: string;
-}
+const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 export default function Profile() {
-  const [activeTab, setActiveTab] = useState('rides');
-  const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState("rides");
+  const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile>({
-    name: "John Doe",
     studentId: "12345",
+    name: "John Doe",
     email: "john.doe@example.com",
-    phone: "+1 234-567-8900"
   });
 
-  const handleSave = () => {
-    // Here you would typically make an API call to update the profile
-    setIsEditing(false);
+  const getProfile = async () => {
+    const response = await fetch(`${API_URL}/user/profile`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+    if (!response.ok) {
+      console.error("Failed to fetch profile data");
+      return;
+    }
+    const data = await response.json();
+    setProfile({
+      studentId: data.id,
+      name: data.name,
+      email: data.email,
+      photoUrl: data.picture,
+    });
   };
+
+  useEffect(() => {
+    getProfile();
+    setIsLoading(false);
+  }, []);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 mt-8">
-      {/* Edit Profile Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Edit Profile</h2>
-              <button 
-                onClick={() => setIsEditing(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Student ID
-                </label>
-                <input
-                  type="text"
-                  value={profile.studentId}
-                  onChange={(e) => setProfile({ ...profile, studentId: e.target.value })}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={profile.phone}
-                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <Button 
-                variant="secondary" 
-                onClick={() => setIsEditing(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleSave}>
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           {/* Profile Header with Cover Image */}
@@ -114,15 +64,25 @@ export default function Profile() {
               <div className="flex flex-col sm:flex-row items-center -mt-12">
                 <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
                   <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center relative group">
-                    <User className="w-12 h-12 text-gray-400" />
+                    {profile.photoUrl ? (
+                      <img
+                        src={profile.photoUrl}
+                        alt={profile.name}
+                        className="w-full h-full rounded-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <User className="w-12 h-12 text-gray-400" />
+                    )}
                     <div className="absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
                       <Camera className="w-6 h-6 text-white" />
                     </div>
                   </div>
                 </div>
                 <div className="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left">
-                  <h1 className="text-2xl font-bold">John Doe</h1>
-                  <p className="text-gray-600">Student ID: 12345</p>
+                  <h1 className="text-2xl text-white font-bold">
+                    {profile.name}
+                  </h1>
                   <div className="flex items-center justify-center sm:justify-start mt-2 space-x-4">
                     <div className="flex items-center">
                       <Star className="w-5 h-5 text-yellow-400" />
@@ -138,12 +98,6 @@ export default function Profile() {
                     </div>
                   </div>
                 </div>
-                <Button 
-                  className="mt-4 sm:mt-0 sm:ml-auto"
-                  onClick={() => setIsEditing(true)}
-                >
-                  Edit Profile
-                </Button>
               </div>
 
               {/* Update Contact Information to use profile state */}
@@ -151,10 +105,6 @@ export default function Profile() {
                 <div className="flex items-center text-gray-600">
                   <Mail className="w-4 h-4 mr-2" />
                   <span>{profile.email}</span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <Phone className="w-4 h-4 mr-2" />
-                  <span>{profile.phone}</span>
                 </div>
               </div>
             </div>
@@ -166,17 +116,21 @@ export default function Profile() {
               <div className="flex">
                 <button
                   className={`px-6 py-3 text-sm font-medium ${
-                    activeTab === 'rides' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'
+                    activeTab === "rides"
+                      ? "border-b-2 border-blue-500 text-blue-600"
+                      : "text-gray-500"
                   }`}
-                  onClick={() => setActiveTab('rides')}
+                  onClick={() => setActiveTab("rides")}
                 >
                   Upcoming Rides
                 </button>
                 <button
                   className={`px-6 py-3 text-sm font-medium ${
-                    activeTab === 'history' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'
+                    activeTab === "history"
+                      ? "border-b-2 border-blue-500 text-blue-600"
+                      : "text-gray-500"
                   }`}
-                  onClick={() => setActiveTab('history')}
+                  onClick={() => setActiveTab("history")}
                 >
                   Ride History
                 </button>
@@ -184,10 +138,13 @@ export default function Profile() {
             </div>
 
             <div className="p-6">
-              {activeTab === 'rides' ? (
+              {activeTab === "rides" ? (
                 <div className="space-y-4">
                   {[1, 2].map((_, index) => (
-                    <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div
+                      key={index}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="flex items-center text-lg font-medium">
@@ -205,7 +162,9 @@ export default function Profile() {
                             </div>
                           </div>
                         </div>
-                        <Button variant="secondary" size="sm">Cancel</Button>
+                        <Button variant="secondary" size="sm">
+                          Cancel
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -213,7 +172,10 @@ export default function Profile() {
               ) : (
                 <div className="space-y-4">
                   {[1, 2, 3].map((_, index) => (
-                    <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div
+                      key={index}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="flex items-center text-lg font-medium">
