@@ -72,7 +72,7 @@ export async function addNewlyCreatedRide(body) {
   } = body;
   const query1 = `
     SELECT id FROM users WHERE email = $1`;
-  const response = pool.query(query1, [email]);
+  const response = await pool.query(query1, [email]);
   const userID = response.rows[0].id;
 
   const query = `

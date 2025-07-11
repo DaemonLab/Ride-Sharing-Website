@@ -24,29 +24,34 @@ export default function Profile() {
   });
 
   const getProfile = async () => {
-    const response = await fetch(`${API_URL}/user/profile`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    });
-    if (!response.ok) {
-      console.error("Failed to fetch profile data");
-      return;
+    try {
+      const response = await fetch(`${API_URL}/user/profile`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+      if (!response.ok) {
+        console.error("Failed to fetch profile data");
+        return;
+      }
+      const data = await response.json();
+      setProfile({
+        studentId: data.id,
+        name: data.name,
+        email: data.email,
+        photoUrl: data.picture,
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setIsLoading(false);
     }
-    const data = await response.json();
-    setProfile({
-      studentId: data.id,
-      name: data.name,
-      email: data.email,
-      photoUrl: data.picture,
-    });
   };
 
   useEffect(() => {
     getProfile();
-    setIsLoading(false);
   }, []);
 
   if (isLoading) {

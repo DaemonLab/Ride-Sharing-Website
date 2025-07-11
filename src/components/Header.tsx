@@ -117,10 +117,14 @@ export default function Header() {
                 </Link>
               ) : (
                 <div className="space-y-2">
-                  <Button variant="secondary" className="w-full">
-                    Sign In
-                  </Button>
-                  <Button className="w-full">Sign Up</Button>
+                  <Link to="/signin" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="secondary" className="w-full">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full">Sign Up</Button>
+                  </Link>
                 </div>
               )}
             </nav>

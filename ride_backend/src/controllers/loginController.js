@@ -53,14 +53,21 @@ export const loginRedirect = (req, res) => {
 }
 
 export const googleCallback = async (req, res) => {
-  const { code } = req.query;
+  const { code, error, error_description } = req.query;
 
   logger.info('OAuth callback received:');
   logger.info(`Code length: ${code ? code.length : 'No code'}`);
+  logger.info(`Error: ${error}`);
   logger.info(`Session ID: ${req.sessionID}`);
 
+  // Handle OAuth errors (like when user hits back button)
+  if (error) {
+    logger.warn(`OAuth error: ${error} - ${error_description}`);
+    return res.redirect(`${FRONTEND_URL}/signin?status=error&message=${encodeURIComponent('Authentication cancelled or failed')}`);
+  }
+
   if (!code) {
-    return res.status(400).json({ error: 'Authorization code not provided' });
+    return res.redirect(`${FRONTEND_URL}/signin?status=error&message=${encodeURIComponent('Authorization code not provided')}`);
   }
 
   try {
