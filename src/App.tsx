@@ -14,7 +14,7 @@ import BookRide from './pages/BookRide';
 import BookingSuccess from './pages/BookingSuccess';
 import GroupMembers from './pages/GroupMembers';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-
+import Chat from './pages/Chat';
 function App() {
   return (
     <Router>
@@ -31,6 +31,7 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/safety" element={<Safety />} />
+            <Route path="/chat" element={<Chat/>} />
             <Route path="/book-ride" element={<BookRide />} />
             <Route path="/booking-success" element={<BookingSuccess />} />
             <Route path="/group-members" element={<GroupMembers />} />

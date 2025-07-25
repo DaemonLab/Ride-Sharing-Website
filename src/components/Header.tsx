@@ -12,7 +12,9 @@ export default function Header() {
     { label: 'Home', path: '/' },
     { label: 'Find a Ride', path: '/find' },
     { label: 'Offer a Ride', path: '/offer' },
-    { label: 'Profile', path: '/profile' },
+    { label: 'Profile', path: '/profile',
+      label: 'Chat' , path : '/chat',
+     },
   ];
 
   const isActivePath = (path: string) => location.pathname === path;
