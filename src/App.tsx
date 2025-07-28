@@ -15,34 +15,37 @@ import GroupMembers from "./pages/GroupMembers";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
+import { ParallaxProvider } from "react-scroll-parallax";
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <main className="flex-grow">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/signin" element={<SignIn />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/safety" element={<Safety />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/find" element={<Find />} />
-                <Route path="/offer" element={<Offer />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/book-ride" element={<BookRide />} />
-                <Route path="/booking-success" element={<BookingSuccess />} />
-              </Route>
-              <Route path="/group-members" element={<GroupMembers />} />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
-      </Router>
+      <ParallaxProvider>
+        <Router>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-grow">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/signin" element={<SignIn />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/safety" element={<Safety />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/find" element={<Find />} />
+                  <Route path="/offer" element={<Offer />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/book-ride" element={<BookRide />} />
+                  <Route path="/booking-success" element={<BookingSuccess />} />
+                </Route>
+                <Route path="/group-members" element={<GroupMembers />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </Router>
+      </ParallaxProvider>
     </AuthProvider>
   );
 }
