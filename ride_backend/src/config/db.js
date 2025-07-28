@@ -1,10 +1,10 @@
 import pkg from "pg";
 import dotenv from "dotenv";
+import { logger } from "./logger.js";
 
 dotenv.config();
 
 const { Pool } = pkg;
-
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -16,6 +16,17 @@ const pool = new Pool({
     require: true,
     rejectUnauthorized: false,
   },
+  max: 5, // Reduce max connections for cloud DB
+  idleTimeoutMillis: 300000, // 5 minutes
+  connectionTimeoutMillis: 10000, // 10 seconds
+  query_timeout: 30000, // 30 seconds
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 0,
+  statement_timeout: 30000, // 30 seconds
+});
+
+pool.on('error', (err) => {
+  logger.error('Unexpected error on idle client', err);
 });
 
 export const initDb = async () => {
@@ -27,17 +38,13 @@ export const initDb = async () => {
         email VARCHAR(255) NOT NULL,
         name VARCHAR(255),
         picture TEXT,
-        access_token TEXT,
-        refresh_token TEXT,
-        token_expiry TIMESTAMP
-        isAdmin BOOLEAN DEFAULT FALSE,
+        isAdmin BOOLEAN DEFAULT FALSE
       )
     `);
 
-    console.log('Database tables initialized');
+    logger.info('Database tables initialized');
   } catch (err) {
-    console.error('Error initializing database tables:', err);
-    process.exit(1);
+    logger.error('Error initializing database tables:', err);
   }
 };
 

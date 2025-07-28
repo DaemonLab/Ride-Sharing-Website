@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User } from 'lucide-react';
-import Button from './Button';
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Menu, X, User } from "lucide-react";
+import Button from "./Button";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const isAuthenticated = false; // Replace with actual auth state
+  const { isAuthenticated, logout } = useAuth();
 
   const navItems = [
-    { label: 'Home', path: '/' },
-    { label: 'Find a Ride', path: '/find' },
-    { label: 'Offer a Ride', path: '/offer' },
-    { label: 'Profile', path: '/profile' },
+    { label: "Home", path: "/" },
+    { label: "Find a Ride", path: "/find" },
+    { label: "Offer a Ride", path: "/offer" },
   ];
 
   const isActivePath = (path: string) => location.pathname === path;
@@ -33,7 +33,7 @@ export default function Header() {
                 key={item.path}
                 to={item.path}
                 className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isActivePath(item.path) ? 'text-blue-600' : 'text-gray-600'
+                  isActivePath(item.path) ? "text-blue-600" : "text-gray-600"
                 }`}
               >
                 {item.label}
@@ -42,20 +42,22 @@ export default function Header() {
           </nav>
 
           {/* Desktop Auth Buttons */}
-          
+
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
-                <Link to="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
+                <Link
+                  to="/profile"
+                  className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
+                >
                   <User className="w-5 h-5" />
                   <span>Profile</span>
                 </Link>
-                <Button 
-                  variant="secondary" 
+                <Button
+                  variant="secondary"
                   size="sm"
                   onClick={() => {
-                    // Add logout logic here
-                    // navigate('/');
+                    logout();
                   }}
                 >
                   Sign Out
@@ -64,7 +66,9 @@ export default function Header() {
             ) : (
               <>
                 <Link to="/signin">
-                  <Button variant="secondary" size="sm">Sign In</Button>
+                  <Button variant="secondary" size="sm">
+                    Sign In
+                  </Button>
                 </Link>
                 <Link to="/signup">
                   <Button size="sm">Sign Up</Button>
@@ -95,7 +99,7 @@ export default function Header() {
                   key={item.path}
                   to={item.path}
                   className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                    isActivePath(item.path) ? 'text-blue-600' : 'text-gray-600'
+                    isActivePath(item.path) ? "text-blue-600" : "text-gray-600"
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -113,8 +117,14 @@ export default function Header() {
                 </Link>
               ) : (
                 <div className="space-y-2">
-                  <Button variant="secondary" className="w-full">Sign In</Button>
-                  <Button className="w-full">Sign Up</Button>
+                  <Link to="/signin" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="secondary" className="w-full">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full">Sign Up</Button>
+                  </Link>
                 </div>
               )}
             </nav>
