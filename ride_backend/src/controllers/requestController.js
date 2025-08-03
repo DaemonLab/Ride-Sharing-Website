@@ -33,7 +33,7 @@ export async function handleRequest(req, res) {
 
 export async function getRequestsSent(req, res) {
     try {
-      const result = await getRequestsSent(req.body);
+      const result = await getSentRequests(req.body);
       res.status(200).json({
         success: true,
         data: result
