@@ -47,7 +47,7 @@ app.use("/health", (req, res) => {
 app.use("/auth", loginRoutes);
 
 app.use(authenticate);
-app.use("/rides", rideRoutes);
+app.use("/rides", rideRoutes);// completed mark krne ke liye time se dekh rhe h , jab time khtm ho jye toh apne aap completed mark ho jye
 app.use("/chat", chatRoutes);
 app.use("/request", requestRoutes);
 app.use("/user", userRoutes);

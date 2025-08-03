@@ -5,13 +5,11 @@ export async function getPendingRides(body) {
   const query = `
         SELECT *
         FROM rides r
-        INNER JOIN users u ON u.id = r.createdBy
-        WHERE r.rideStatus = $1
-        AND 
-        u.email <> $2
-        AND r.seatsAvailable > $3
+        INNER JOIN users u ON u.id = r."createdBy"
+        WHERE r."rideStatus" = $1
+        AND r."seatsAvailable" > $2
         `;
-  const values = ["Pending", body.email, 0];
+  const values = ["Pending", 0];
   try {
     const response = await pool.query(query, values);
     logger.info("Checked database successfully");
@@ -23,28 +21,28 @@ export async function getPendingRides(body) {
 }
 
 export async function getFilteredPendingRides(body) {
-  const { src, dest, email } = body;
+  const { source, destination, date} = body;
   let query = `
       SELECT 
-      * FROM rides
-      INNER JOIN users u ON u.id = r.createdBy 
-      WHERE ride_status = $1
-      AND createdBy <> $2
-      AND seatsAvailable > $3`;
-  let values = ["Pending", email, 0];
+      * FROM rides r
+      INNER JOIN users u ON u.id = r."createdBy"
+      WHERE "rideStatus" = $1
+      AND "seatsAvailable" > $2
+      AND date = $3`;
+  let values = ["Pending", 0, date];
   let index = 4;
 
-  if (src !== null) {
-    if (src.length !== 0 && src.trim() !== "") {
+  if (source !== null) {
+    if (source.length !== 0 && source.trim() !== "") {
       query += ` AND source = $${index}`;
-      values.push(src.trim());
+      values.push(source.trim());
       index++;
     }
   }
-  if (dest !== null) {
-    if (dest.length !== 0 && dest.trim() !== "") {
+  if (destination !== null) {
+    if (destination.length !== 0 && destination.trim() !== "") {
       query += ` AND destination = $${index}`;
-      values.push(dest.trim());
+      values.push(destination.trim());
       index++;
     }
   }
@@ -99,3 +97,124 @@ export async function addNewlyCreatedRide(body) {
     throw new Error(error.message);
   }
 }
+
+
+// upcoming rides (khudki banai ho + dusre ne banai ho)
+export async function getUpcomingRides(body) {
+  const { userID } = body;
+  const values = [userID];
+
+  const query = `
+  SELECT 
+    r."rideID", 
+    r."createdBy", 
+    r.source, 
+    r.destination, 
+    r.date, 
+    r.time, 
+    r."seatsAvailabel", 
+    r."totalCost", 
+    r."vehicleType",
+    u1.name AS "creatorName",
+    r."rideStatus",
+    STRING_AGG(u2.name, ', ') AS "ridePartnerNames"
+  FROM rides r
+
+  INNER JOIN users u1 
+    ON r."createdBy" = u1."id"
+
+  LEFT JOIN requests req 
+    ON req."rideID" = r."rideID"
+    AND req."requestStatus" = 'Accepted'
+
+  LEFT JOIN users u2 
+    ON req."requestBy" = u2."id"
+
+  WHERE r."rideStatus" = 'Pending'
+    AND (
+      r."createdBy" = $1
+      OR EXISTS (
+        SELECT 1
+        FROM requests req2
+        WHERE req2."rideID" = r."rideID"
+          AND req2."requestBy" = $1
+          AND req2."requestStatus" = 'Accepted'
+      )
+    )
+
+  GROUP BY 
+    r."rideID", r."createdBy", r.source, r.destination, r.date, r.time, 
+    r."seatsAvailabel", r."totalCost", r."vehicleType", 
+    r."rideStatus", u1.name
+`;
+
+  try {
+    const response = await pool.query(query, values);
+    return response.rows;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+}
+
+
+
+
+
+// completed rides (khudki banai ho + dusre ne banai ho)
+export async function getCompletedRides(body) {
+  const { userID } = body;
+
+  const query = `
+    SELECT 
+      r."rideID", 
+      r."createdBy", 
+      r.source, 
+      r.destination, 
+      r.date, 
+      r.time, 
+      r."seatsAvailabel", 
+      r."totalCost", 
+      r."vehicleType",
+      u1.name AS "creatorName",
+      r."rideStatus",
+      STRING_AGG(u2.name, ', ') AS "ridePartnerNames"
+    FROM rides r
+
+    INNER JOIN users u1 
+      ON r."createdBy" = u1."id"
+
+    LEFT JOIN requests req 
+      ON req."rideID" = r."rideID"
+      AND req."requestStatus" = 'Accepted'
+
+    LEFT JOIN users u2 
+      ON req."requestBy" = u2."id"
+
+    WHERE r."rideStatus" = 'Completed'
+      AND (
+        r."createdBy" = $1
+        OR EXISTS (
+          SELECT 1
+          FROM requests req2
+          WHERE req2."rideID" = r."rideID"
+            AND req2."requestBy" = $1
+            AND req2."requestStatus" = 'Accepted'
+        )
+      )
+
+    GROUP BY 
+      r."rideID", r."createdBy", r.source, r.destination, r.date, r.time, 
+      r."seatsAvailabel", r."totalCost", r."vehicleType", 
+      r."rideStatus", u1.name
+  `;
+
+  const values = [userID];
+
+  try {
+    const response = await pool.query(query, values);
+    return response.rows;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+}
+
