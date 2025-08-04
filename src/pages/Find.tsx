@@ -1,22 +1,36 @@
-import React, { useState, useMemo } from "react";
-import { Search, Calendar, Clock, MapPin } from "lucide-react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import { AuthContext } from "../context/AuthContext";
+import apiClient, { Ride } from "../services/api";
+import { MapPin, Calendar, Clock } from "lucide-react";
 import Button from "../components/Button";
 
-interface RideData {
+interface ApiError extends Error {
+  response?: {
+    status?: number;
+    data?: any;
+  };
+}
+
+interface SearchParams {
   from: string;
   to: string;
   date: string;
   time: string;
-  price: number;
-  seats: number;
-  vehicle: string;
-  vehicle_model: string;
-  isBooked: boolean;
 }
 
 export default function Find() {
-  const [searchParams, setSearchParams] = useState({
+  const authContext = useContext(AuthContext);
+  if (!authContext) {
+    throw new Error('AuthContext must be used within an AuthProvider');
+  }
+  const { isAuthenticated, login, user } = authContext;
+  const [rides, setRides] = useState<Ride[]>([]);
+  const [loading, setLoading] = useState(true); 
+  const [error, setError] = useState<string | null>(null);
+
+  const [searchParams, setSearchParams] = useState<SearchParams>({
     from: "",
     to: "",
     date: "",
@@ -25,142 +39,170 @@ export default function Find() {
 
   const navigate = useNavigate();
 
-  // Sample rides data (replace with actual data from backend)
-  // Update the rides_data array
-  const rides_data = [
-    {
-      from: "Campus",
-      to: "Downtown",
-      date: "2025-03-01",
-      time: "14:00",
-      price: 5,
-      seats: 5,
-      vehicle: "Car",
-      vehicle_model: "Toyota Camry",
-      isBooked: true,
-    },
-    {
-      from: "Downtown",
-      to: "Campus",
-      date: "2025-03-02",
-      time: "16:00",
-      price: 5,
-      seats: 4,
-      vehicle: "SUV",
-      vehicle_model: "Honda CR-V",
-      isBooked: false,
-    },
-    {
-      from: "Campus",
-      to: "Airport",
-      date: "2025-03-03",
-      time: "10:00",
-      price: 5,
-      seats: 5,
-      vehicle: "Car",
-      vehicle_model: "Toyota Camry",
-      isBooked: true,
-    },
-    {
-      from: "Downtown",
-      to: "Campus",
-      date: "2025-03-04",
-      time: "18:00",
-      price: 5,
-      seats: 7,
-      vehicle: "SUV",
-      vehicle_model: "Honda CR-V",
-      isBooked: false,
-    },
-    {
-      from: "Airport",
-      to: "Campus",
-      date: "2025-03-05",
-      time: "12:00",
-      price: 5,
-      seats: 3,
-      vehicle: "Car",
-      vehicle_model: "Toyota Camry",
-      isBooked: false,
-    },
-    {
-      from: "Campus",
-      to: "Downtown",
-      date: "2025-03-06",
-      time: "14:00",
-      price: 5,
-      seats: 2,
-      vehicle: "SUV",
-      vehicle_model: "Honda CR-V",
-      isBooked: false,
-    },
-  ];
+  // Fetch initial rides on component mount
+  useEffect(() => {
+    const fetchInitialRides = async () => {
+      setLoading(true);
+      setError(null);
+      
+      if (!isAuthenticated || !user?.email) {
+        setLoading(false);
+        return;
+      }
 
-  const handleBooking = (ride: RideData) => {
-    navigate("/book-ride", {
+      try {
+        const initialRides = await apiClient.getAllRides();
+        setRides(Array.isArray(initialRides) ? initialRides : []);
+      } catch (error) {
+        console.error("Error fetching initial rides:", error);
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 401) {
+          toast.error("Please log in to view rides");
+          if (login) login();
+        } else {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to load rides';
+          setError(errorMessage);
+          toast.error(`Failed to load rides: ${errorMessage}`);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialRides();
+  }, [isAuthenticated, login, user?.email]);
+
+  // MODIFICATION: Changed navigation route to /book-ride and passed state.
+  const handleBooking = (ride: Ride) => {
+    navigate('/book-ride', { 
       state: {
         rideDetails: ride,
       },
     });
   };
 
-  // Helper function to convert "HH:MM" to minutes
-  const timeToMinutes = (timeStr) => {
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    return hours * 60 + minutes;
-  };
-
-  const filteredRides = useMemo(() => {
-    return rides_data.filter((ride) => {
-      const matchFrom =
-        !searchParams.from ||
-        ride.from.toLowerCase().includes(searchParams.from.toLowerCase());
-      const matchTo =
-        !searchParams.to ||
-        ride.to.toLowerCase().includes(searchParams.to.toLowerCase());
-      const matchDate = !searchParams.date || ride.date === searchParams.date;
-
-      let matchTime = true;
-      if (searchParams.time && ride.time) {
-        const selectedTime = timeToMinutes(searchParams.time);
-        const rideTime = timeToMinutes(ride.time);
-        matchTime = Math.abs(selectedTime - rideTime) <= 60; // ±1 hour
-      }
-
-      return matchFrom && matchTo && matchDate && matchTime;
-    });
-  }, [searchParams, rides_data]);
-
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Search is handled automatically through filteredRides
-  };
+    if (!isAuthenticated || !user?.email) {
+      toast.error('Please log in to search for rides');
+      if (login) login();
+      return;
+    }
 
+    if (!searchParams.from && !searchParams.to && !searchParams.date && !searchParams.time) {
+      toast.error('Please enter at least one search criteria');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const searchWithEmail = { ...searchParams, email: user.email };
+      const filteredRides = await apiClient.getFilteredRides(searchWithEmail);
+      
+      setRides(Array.isArray(filteredRides) ? filteredRides : []);
+      
+      if (!filteredRides || filteredRides.length === 0) {
+        toast('No rides found matching your criteria', { icon: 'ℹ️' });
+      } else {
+        toast.success(`Found ${filteredRides.length} ride(s)`);
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to search rides';
+      console.error('Error searching rides:', errorMessage, error);
+      setError(errorMessage);
+      
+      if (error?.response?.status === 401) {
+        toast.error('Your session has expired. Please log in again.');
+        if (login) login();
+      } else {
+        toast.error(`Search failed: ${errorMessage}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    if (!dateStr) return "N/A";
+    return new Date(dateStr).toLocaleDateString("en-IN", { 
       year: "numeric",
       month: "short",
       day: "numeric",
     });
   };
 
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md text-center">
+          <div className="text-red-500 mb-6">
+            <svg
+              className="mx-auto h-12 w-12 text-red-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <h2 className="mt-4 text-xl font-medium text-gray-900">
+              Unable to Load Rides
+            </h2>
+            <p className="mt-2 text-gray-600">
+              We're having trouble loading available rides right now. This might be a temporary issue.
+            </p>
+          </div>
+          <div className="mt-6">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Try Again
+            </button>
+          </div>
+          <div className="mt-4 text-sm text-gray-500">
+            <p>If the problem persists, please try again later or contact support.</p>
+            <p className="mt-1 text-xs opacity-75">Error: {error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>Loading available rides...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 mt-8">
       <div className="container mx-auto px-4">
         <h1 className="text-3xl font-bold text-center mb-8">Find a Ride</h1>
 
-        {/* Search Form */}
         <form
           onSubmit={handleSearch}
           className="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6"
         >
-          <div className="space-y-4">
+          {/* Search form fields */}
+           <div className="space-y-4">
             <div className="flex items-center border rounded-lg p-3">
               <MapPin className="w-5 h-5 text-gray-400 mr-2" />
               <input
                 type="text"
                 placeholder="From"
-                className="w-full focus:outline-none"
+                className="w-full focus:outline-none bg-transparent"
                 value={searchParams.from}
                 onChange={(e) =>
                   setSearchParams({ ...searchParams, from: e.target.value })
@@ -173,7 +215,7 @@ export default function Find() {
               <input
                 type="text"
                 placeholder="To"
-                className="w-full focus:outline-none"
+                className="w-full focus:outline-none bg-transparent"
                 value={searchParams.to}
                 onChange={(e) =>
                   setSearchParams({ ...searchParams, to: e.target.value })
@@ -186,7 +228,7 @@ export default function Find() {
                 <Calendar className="w-5 h-5 text-gray-400 mr-2" />
                 <input
                   type="date"
-                  className="w-full focus:outline-none"
+                  className="w-full focus:outline-none bg-transparent"
                   value={searchParams.date}
                   onChange={(e) =>
                     setSearchParams({ ...searchParams, date: e.target.value })
@@ -198,7 +240,7 @@ export default function Find() {
                 <Clock className="w-5 h-5 text-gray-400 mr-2" />
                 <input
                   type="time"
-                  className="w-full focus:outline-none"
+                  className="w-full focus:outline-none bg-transparent"
                   value={searchParams.time}
                   onChange={(e) =>
                     setSearchParams({ ...searchParams, time: e.target.value })
@@ -207,8 +249,8 @@ export default function Find() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Search Rides
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? "Searching..." : "Search Rides"}
             </Button>
           </div>
         </form>
@@ -216,67 +258,59 @@ export default function Find() {
         {/* Results Section */}
         <div className="max-w-4xl mx-auto mt-12">
           <h2 className="text-2xl font-semibold mb-6">
-            Available Rides ({filteredRides.length})
+            Available Rides
           </h2>
+
+          {loading && (
+            <div className="text-center py-8 text-gray-500">Loading rides...</div>
+          )}
+          
+          {error && !loading && (
+            <div className="text-center py-8 text-red-500 bg-red-50 p-4 rounded-lg">
+              {error}
+            </div>
+          )}
+
           <div className="space-y-4">
-            {filteredRides.map((ride, index) => (
+            {!loading && !error && rides.map((ride: Ride, index: number) => (
               <div
-                key={index}
+                key={`${ride._id}-${index}`}
                 className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-lg font-semibold">
-                      {ride.from} → {ride.to}
+                      {ride.source} → {ride.destination}
                     </h3>
                     <p className="text-gray-600">
                       {formatDate(ride.date)} • {ride.time}
                     </p>
-                    <p className="text-gray-600">
-                      {ride.vehicle} • {ride.vehicle_model}
+                    <p className="text-sm text-gray-500">
+                      Vehicle: {ride.vehicleType || "Not specified"}
                     </p>
-                    <p className="text-gray-600 mt-2">
-                      <span
-                        className={`${
-                          ride.seats < 3 ? "text-orange-600" : "text-green-600"
-                        }`}
-                      >
-                        {ride.seats} seats available
-                      </span>
-                    </p>
-                    <p className="text-gray-600 mt-2">
-                      <span
-                        className={`${
-                          ride.isBooked == false
-                            ? "text-orange-600"
-                            : "text-blue-600"
-                        }`}
-                      >
-                        {` ${
-                          ride.isBooked == false ? "Not PreBooked" : "PreBooked"
-                        }`}
-                      </span>
+                    <p className="text-sm text-green-600 mt-2">
+                        {ride.seatsAvailable} seat{ride.seatsAvailable !== 1 ? 's' : ''} available
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-bold text-blue-600">
-                      ₹{ride.price}
+                      ₹{ride.totalCost || 'N/A'}
                     </p>
                     <Button
                       size="sm"
                       className="mt-2"
                       onClick={() => handleBooking(ride)}
-                      disabled={ride.seats === 0}
+                      disabled={ride.seatsAvailable === 0}
                     >
-                      {ride.seats === 0 ? "Sold Out" : "Book Now"}
+                      {ride.seatsAvailable === 0 ? 'Full' : 'Request to Book'}
                     </Button>
                   </div>
                 </div>
               </div>
             ))}
-            {filteredRides.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No rides found matching your search criteria
+            {!loading && !error && rides.length === 0 && (
+              <div className="text-center py-8 text-gray-500 bg-white shadow-md rounded-xl p-6">
+                No available rides match your search. Try adjusting your filters.
               </div>
             )}
           </div>

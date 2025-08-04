@@ -48,8 +48,8 @@ app.use("/auth", loginRoutes);
 
 app.use(authenticate);
 app.use("/rides", rideRoutes);
-app.use("/chat", chatRoutes);
 app.use("/request", requestRoutes);
+app.use("/chat", chatRoutes);
 app.use("/user", userRoutes);
 
 async function connectDB() {

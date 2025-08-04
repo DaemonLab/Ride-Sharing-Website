@@ -4,6 +4,25 @@ import {
 } from "../models/chatModel.js";
 
  
+
+export async function getRideMembers(req, res) {
+    try {
+        const result = await getRideMembers(req.body);
+        return res.status(200).json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error("Error getting ride member names:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to retrieve ride member names",
+            error: error.message
+        });
+    }
+}
+
+
 export async function getPreviousMessages(req, res) {
     try {
         const messages = await getOlderMessages(req.body);

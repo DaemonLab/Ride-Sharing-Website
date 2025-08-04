@@ -1,9 +1,10 @@
 import {
   getPendingRides,
   getFilteredPendingRides,
-  addNewlyCreatedRide
+  addNewlyCreatedRide,
+  getUpcomingRides,
+  getCompletedRides
 } from "../models/rideModel.js";
-
 
 
 
@@ -24,8 +25,6 @@ export async function getAllPendingRides(req, res) {
   }
 }
 
- 
-
 
 export async function getAllFilteredRides(req, res) {
   try {
@@ -45,20 +44,57 @@ export async function getAllFilteredRides(req, res) {
 }
 
 
-
-
 export async function addNewRide(req, res) {
   try {
-    await addNewlyCreatedRide(req.body);
+    const createdRide = await addNewlyCreatedRide(req.body);
     res.status(201).json({
       success: true,
-      message: "Ride created successfully"
+      message: "Ride created successfully",
+      data: createdRide
     });
   } catch (error) {
     console.error("Error in creating ride:", error.stack);
     res.status(500).json({
       success: false,
       message: "Failed to create ride",
+      error: error.message
+    });
+  }
+}
+
+
+export async function getAllUpcomingRides(req, res) {
+  try {
+    const result = await getUpcomingRides(req.body);
+    res.status(200).json({
+      success: true,
+      message: "Upcoming rides fetched successfully",
+      data: result
+    });
+  } catch (error) {
+    console.error("Error in fetching upcoming rides:", error.stack);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch upcoming rides",
+      error: error.message
+    });
+  }
+}
+
+
+export async function getAllCompletedRides(req, res) {
+  try {
+    const result = await getCompletedRides(req.body);
+    res.status(200).json({
+      success: true,
+      message: "Completed rides fetched successfully",
+      data: result
+    });
+  } catch (error) {
+    console.error("Error in fetching completed rides:", error.stack);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch completed rides",
       error: error.message
     });
   }

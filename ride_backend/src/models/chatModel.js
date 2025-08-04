@@ -1,12 +1,40 @@
 import pool from "../config/db.js";
 
 
+export async function getRideMembers(body) {
+    const { rideID } = body;
+    const query = `
+    SELECT u.id, u.name
+    FROM users u
+    WHERE u.id IN (
+      SELECT r."createdBy"
+      FROM rides r
+      WHERE r."rideID" = $1
+
+      UNION
+
+      SELECT req."requestBy"
+      FROM requests req
+      WHERE req."rideID" = $1
+        AND req."requestStatus" = 'Accepted'
+    )
+  `;
+    const values = [rideID];
+
+    try {
+        const response = await pool.query(query , values);
+        return response.rows;
+    } catch (error) {
+        throw new Error(error);
+    }  
+}
+
 
 export async function addMessage(body) {
     const {
         rideID,
-        ridePublisherID,
-        messageBy,    // id or email...if email, then fetch the id from the users table
+        rideOwner,
+        messageBy,     
         message,
         time,
         date
@@ -17,15 +45,13 @@ export async function addMessage(body) {
     VALUES
     ($1 , $2 , $3 , $4 , $5 , $6)
     `;
-    const values = [rideID , ridePublisherID , messageBy , message , time , date];
+    const values = [rideID , rideOwner , messageBy , message , time , date];
     try {
         await pool.query(query , values);
     } catch (error) {
         throw new Error(error);
     }
 }
-
-
 
 
 export async function getOlderMessages(body) {

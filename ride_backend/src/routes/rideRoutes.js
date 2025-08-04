@@ -2,18 +2,21 @@ import express from "express";
 import {
     getAllPendingRides,
     getAllFilteredRides,
-    addNewRide
+    addNewRide,
+    getAllUpcomingRides,
+    getAllCompletedRides
 }
 from "../controllers/rideController.js"
 
 const router = express.Router();
 
-router.post("/availableRides" , getAllPendingRides);
+router.get("/availableRides" , getAllPendingRides);
 router.post("/filteredAvailableRides" , getAllFilteredRides);
 router.post("/addRide" , addNewRide);
+router.get("/pendingRides" , getAllUpcomingRides);
+router.get("/completedRides" , getAllCompletedRides);
 
 export default router;
-
 
 
 
