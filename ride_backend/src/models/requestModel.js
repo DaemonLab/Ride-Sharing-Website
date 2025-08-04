@@ -1,4 +1,4 @@
-import pool from "../config/db";
+import pool from "../config/db.js";
 
 
 // request reject krdi toh dobara request bhej skta h
