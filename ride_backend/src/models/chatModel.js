@@ -1,9 +1,7 @@
 import pool from "../config/db.js";
 
-
-export async function getRideMembers(body) {
-    const { rideID } = body;
-    const query = `
+export async function getRideMembers({ rideID }) {
+  const query = `
     SELECT u.id, u.name
     FROM users u
     WHERE u.id IN (
@@ -19,52 +17,42 @@ export async function getRideMembers(body) {
         AND req."requestStatus" = 'Accepted'
     )
   `;
-    const values = [rideID];
-
-    try {
-        const response = await pool.query(query , values);
-        return response.rows;
-    } catch (error) {
-        throw new Error(error);
-    }  
+  try {
+    const response = await pool.query(query, [rideID]);
+    return response.rows;
+  } catch (error) {
+    throw new Error(error);
+  }
 }
 
+export async function addMessage({ rideID, user_id, name, message, timestamp }) {
+  const time = timestamp?.toTimeString().split(" ")[0] || new Date().toTimeString().split(" ")[0];
+  const date = timestamp?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0];
 
-export async function addMessage(body) {
-    const {
-        rideID,
-        rideOwner,
-        messageBy,     
-        message,
-        time,
-        date
-    } = body;
-    const query = `
+  const query = `
     INSERT INTO groupChat
-    (rideID , rideOwner , messageBy , message , messageTime , messageDate)
-    VALUES
-    ($1 , $2 , $3 , $4 , $5 , $6)
-    `;
-    const values = [rideID , rideOwner , messageBy , message , time , date];
-    try {
-        await pool.query(query , values);
-    } catch (error) {
-        throw new Error(error);
-    }
+    (rideID, rideOwner, messageBy, message, messageTime, messageDate)
+    VALUES ($1, $2, $3, $4, $5, $6)
+  `;
+  const values = [rideID, name, user_id, message, time, date];
+
+  try {
+    await pool.query(query, values);
+  } catch (error) {
+    throw new Error(error);
+  }
 }
 
-
-export async function getOlderMessages(body) {
-    const {rideID } = body;
-    const query = `
+export async function getOlderMessages({ rideID }) {
+  const query = `
     SELECT * FROM groupChat 
     WHERE rideID = $1
-    `
-    try {
-        const response = await pool.query(query , [rideID]);
-        return response.rows;
-    } catch (error) {
-        throw new Error(error);
-    }
-    
+    ORDER BY messageDate DESC, messageTime DESC
+  `;
+  try {
+    const response = await pool.query(query, [rideID]);
+    return response.rows;
+  } catch (error) {
+    throw new Error(error);
+  }
 }

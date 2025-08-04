@@ -1,59 +1,38 @@
 import {
-    addMessage,
-    getOlderMessages
+  addMessage,
+  getOlderMessages
 } from "../models/chatModel.js";
+import { getRideMembers as getRideMembersModel } from "../models/chatModel.js";
 
- 
-
-export async function getRideMembers(req, res) {
-    try {
-        const result = await getRideMembers(req.body);
-        return res.status(200).json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        console.error("Error getting ride member names:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to retrieve ride member names",
-            error: error.message
-        });
-    }
+// Get ride members
+export async function getRideMembers({ rideID }) {
+  try {
+    const result = await getRideMembersModel({ rideID });
+    return result;
+  } catch (error) {
+    console.error("Error getting ride member names:", error);
+    throw new Error("Failed to retrieve ride member names");
+  }
 }
 
-
-export async function getPreviousMessages(req, res) {
-    try {
-        const messages = await getOlderMessages(req.body);
-        return res.status(200).json({
-            success: true,
-            data: messages
-        });
-    } catch (error) {
-        console.error("Error getting messages:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to retrieve messages",
-            error: error.message
-        });
-    }
+// Get previous messages
+export async function getPreviousMessages({ rideID }) {
+  try {
+    const messages = await getOlderMessages({ rideID });
+    return messages;
+  } catch (error) {
+    console.error("Error getting messages:", error);
+    throw new Error("Failed to retrieve messages");
+  }
 }
 
- 
-export async function addNewMessage(req, res) {
-    try {
-        await addMessage(req.body);
-        return res.status(201).json({
-            success: true,
-            message: "Message added successfully"
-        });
-    } catch (error) {
-        console.error("Error adding message:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to add message",
-            error: error.message
-        });
-    }
+// Add a new message
+export async function addNewMessage({ rideID, user_id, name, message }) {
+  try {
+    await addMessage({ rideID, user_id, name, message });
+    return { success: true };
+  } catch (error) {
+    console.error("Error adding message:", error);
+    throw new Error("Failed to add message");
+  }
 }
