@@ -16,7 +16,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
 import { ParallaxProvider } from "react-scroll-parallax";
-
+import Chat from "./pages/Chats";
 function App() {
   return (
     <AuthProvider>
@@ -40,6 +40,7 @@ function App() {
                   <Route path="/booking-success" element={<BookingSuccess />} />
                 </Route>
                 <Route path="/group-members" element={<GroupMembers />} />
+                <Route path="/chat" element={<Chat/>} />
               </Routes>
             </main>
             <Footer />

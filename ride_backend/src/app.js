@@ -13,11 +13,15 @@ import dotenv from "dotenv";
 import { authenticate, isAdmin } from "./middleware/authMiddleware.js";
 import { logger } from "./config/logger.js";
 
+
+
 dotenv.config();
 
 var PgSession = connectPg(session);
 const app = express();
+
 initDb();
+
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true })); // Allow CORS from the frontend URL
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
