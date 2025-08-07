@@ -17,7 +17,8 @@ import { logger } from "./config/logger.js";
 
 dotenv.config();
 
-var PgSession = connectPg(session);
+var PgSession = connectPg(session); import supportRoutes from "./routes/supportRoutes.js";
+
 const app = express();
 
 initDb();
@@ -55,6 +56,7 @@ app.use("/rides", rideRoutes);// completed mark krne ke liye time se dekh rhe h 
 app.use("/chat", chatRoutes);
 app.use("/request", requestRoutes);
 app.use("/user", userRoutes);
+app.use(supportRoutes)
 
 async function connectDB() {
   try {
