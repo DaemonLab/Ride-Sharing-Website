@@ -1,17 +1,33 @@
 import pool from "../config/db.js";
 import { logger } from "../config/logger.js";
 
-export async function getPendingRides(body) {
-  const query = `
-        SELECT *
-        FROM rides r
-        INNER JOIN users u ON u.id = r."createdBy"
-        WHERE r."rideStatus" = $1
-        AND r."seatsAvailable" > $2
-        `;
-  const values = ["Pending", 0];
+export async function getPendingRides() {
+  const now = new Date();
+  const currentTimeString = now.toISOString();  
+
+  const updateQuery = `
+    UPDATE rides
+    SET "rideStatus" = 'Completed'
+    WHERE ("date" + "time") <= $1
+    AND "rideStatus" != 'Completed'
+  `;
+
+  const selectQuery = `
+    SELECT *
+    FROM rides r
+    INNER JOIN users u ON u.id = r."createdBy"
+    WHERE r."rideStatus" = $1
+    AND r."seatsAvailable" > $2
+  `;
+
   try {
-    const response = await pool.query(query, values);
+    // Mark old rides as Completed
+    await pool.query(updateQuery, [currentTimeString]);
+
+    // Get future pending rides
+    const values = ["Pending", 0];
+    const response = await pool.query(selectQuery, values);
+
     logger.info("Checked database successfully");
     return response.rows;
   } catch (error) {
@@ -19,6 +35,7 @@ export async function getPendingRides(body) {
     throw new Error(error.message);
   }
 }
+
 
 export async function getFilteredPendingRides(body) {
   const { source, destination, date} = body;
@@ -66,7 +83,7 @@ export async function addNewlyCreatedRide(body) {
     time,
     vehicleType,
     seatsAvailable,
-    totalCost,
+    totalCost
   } = body;
   const query1 = `
     SELECT id FROM users WHERE email = $1`;
@@ -75,9 +92,9 @@ export async function addNewlyCreatedRide(body) {
 
   const query = `
       INSERT INTO rides 
-      (createdBy,source, destination, date, time, seatsAvailable, totalCost, vehicleType, rideStatus) 
+      (createdBy,source, destination, date, time, seatsAvailable, totalCost, vehicleType, rideStatus, totalSeats) 
       VALUES 
-      ($1 , $2 , $3 , $4 , $5 , $6 , $7 , $8 , $9)`;
+      ($1 , $2 , $3 , $4 , $5 , $6 , $7 , $8 , $9, $10)`;
   const values = [
     userID,
     source,
@@ -88,6 +105,7 @@ export async function addNewlyCreatedRide(body) {
     totalCost,
     vehicleType,
     "Pending",
+    seatsAvailable
   ];
   try {
     await pool.query(query, values);

@@ -10,7 +10,7 @@ import {
 
 export async function getAllPendingRides(req, res) {
   try {
-    const result = await getPendingRides(req.body);
+    const result = await getPendingRides();
     res.status(200).json({
       success: true,
       data: result
