@@ -5,8 +5,9 @@ export interface RideRequest {
   _id: string;
   rideID: string;
   requestBy: number;
+  requestByName?: string; // Added to display requester's name
   createdBy: string;
-  requestStatus: 'Pending' | 'Accepted' | 'Rejected';
+  requestStatus: "Pending" | "Accepted" | "Rejected";
   source?: string;
   destination?: string;
   date?: string;
@@ -53,11 +54,21 @@ export interface RideFilters {
   email?: string;
 }
 
+export interface Memebers {
+  id: string;
+  createdBy: string;
+}
+
+export interface RideMember {
+  id: string;
+  name: string;
+}
+
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 const axiosInstance = axios.create({
   baseURL: backendUrl,
-  withCredentials: true, // This is correct for session-based auth
+  withCredentials: true,
 });
 
 export interface CreateRideData {
@@ -117,6 +128,21 @@ const apiClient = {
     }
   },
 
+  cancelRideParticipation: async (
+    rideId: string,
+    userId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await axiosInstance.delete(
+        `/rides/${rideId}/participants/${userId}`
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error("Error canceling ride participation:", error);
+      throw error;
+    }
+  },
+
   getRideById: async (id: string): Promise<Ride> => {
     try {
       const response = await axiosInstance.get(`/rides/${id}`);
@@ -141,6 +167,41 @@ const apiClient = {
       return transformedRide;
     } catch (error) {
       console.error(`Error fetching ride with id ${id}:`, error);
+      throw error;
+    }
+  },
+
+  getUpcomingRides: async (userID: string): Promise<Ride[]> => {
+    try {
+      // MODIFICATION:
+      // 1. Changed endpoint to a new, user-specific one.
+      // 2. Changed method from GET to POST to send the userID in the body.
+      const response = await axiosInstance.post("/rides/user/upcoming", {
+        userID,
+      });
+      const backendData = response.data.data || [];
+      console.log("Upcoming Rides for user:", userID, backendData);
+      return backendData.map(apiClient.transformBackendRide);
+    } catch (error) {
+      console.error("Error fetching upcoming rides:", error);
+      throw error;
+    }
+  },
+
+  // MODIFICATION:
+  // 1. Updated the function to accept a 'userID' parameter.
+  getCompletedRides: async (userID: string): Promise<Ride[]> => {
+    try {
+      // MODIFICATION:
+      // 1. Changed endpoint to a new, user-specific one.
+      // 2. Changed method from GET to POST to send the userID in the body.
+      const response = await axiosInstance.post("/rides/user/completed", {
+        userID,
+      });
+      const backendData = response.data.data || [];
+      return backendData.map(apiClient.transformBackendRide);
+    } catch (error) {
+      console.error("Error fetching completed rides:", error);
       throw error;
     }
   },
@@ -174,22 +235,29 @@ const apiClient = {
     }
   },
 
-  sendRideRequest: async (rideId: string, userId: string): Promise<{ success: boolean; message: string }> => {
+  sendRideRequest: async (
+    rideId: string,
+    userId: string
+  ): Promise<{ success: boolean; message: string }> => {
     try {
-      const response = await axiosInstance.post('/request/sendRequest', {
+      const response = await axiosInstance.post("/request/sendRequest", {
         rideID: rideId,
-        requestBy: userId
+        requestBy: userId,
       });
       // This handles successful 2xx responses from the server.
       return response.data;
     } catch (error: any) {
-      console.error('Error in sendRideRequest API call:', error);
+      console.error("Error in sendRideRequest API call:", error);
       // This catches 4xx/5xx errors and returns the server's JSON response,
       // ensuring the component doesn't need a try/catch block.
-      return error.response?.data || { success: false, message: 'A network or server error occurred.' };
+      return (
+        error.response?.data || {
+          success: false,
+          message: "A network or server error occurred.",
+        }
+      );
     }
   },
-
 
   handleRideRequest: async (
     rideID: string,
@@ -200,7 +268,7 @@ const apiClient = {
       const response = await axiosInstance.post("/request/handleRequest", {
         rideID,
         requestBy,
-        flag: action
+        flag: action,
       });
       return response.data;
     } catch (error: any) {
@@ -222,10 +290,12 @@ const apiClient = {
       return response.data.data || [];
     } catch (error: any) {
       console.error("Error fetching sent requests:", error);
-      throw error.response?.data || {
-        success: false,
-        message: "Failed to fetch sent requests",
-      };
+      throw (
+        error.response?.data || {
+          success: false,
+          message: "Failed to fetch sent requests",
+        }
+      );
     }
   },
 
@@ -237,10 +307,29 @@ const apiClient = {
       return response.data.data || [];
     } catch (error: any) {
       console.error("Error fetching received requests:", error);
-      throw error.response?.data || {
-        success: false,
-        message: "Failed to fetch received requests",
-      };
+      throw (
+        error.response?.data || {
+          success: false,
+          message: "Failed to fetch received requests",
+        }
+      );
+    }
+  },
+
+  getRideMembers: async (rideId: string): Promise<RideMember[]> => {
+    try {
+      const response = await axiosInstance.post("/ride/rideMembers", {
+        rideID: rideId,
+      });
+      return response.data.data || [];
+    } catch (error: any) {
+      console.error("Error fetching ride members:", error);
+      throw (
+        error.response?.data || {
+          success: false,
+          message: "Failed to fetch ride members",
+        }
+      );
     }
   },
 };

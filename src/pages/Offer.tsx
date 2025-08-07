@@ -2,9 +2,10 @@ import React, { useState, useContext } from "react";
 import { MapPin, Calendar, Clock, Users, IndianRupee, Car } from "lucide-react";
 import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-hot-toast";
+import { toast , Toaster } from "react-hot-toast";
 import { AuthContext , useAuth } from "../context/AuthContext";
 import apiClient, { CreateRideData } from "../services/api";
+
 
 interface RideDetails {
   from: string;
@@ -109,11 +110,12 @@ export default function Offer() {
   };
 
   // Safely access user email with null check
-  const userEmail = user?.email || '';
+  // const userEmail = user?.email || '';
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 mt-8">
       <div className="container mx-auto px-4">
+      <Toaster/>
         <h1 className="text-3xl font-bold text-center mb-8">Offer a Ride</h1>
 
         <form
@@ -175,6 +177,7 @@ export default function Offer() {
                   <input
                     type="time"
                     name="time"
+                    step="3600"
                     className="w-full outline-none bg-transparent text-gray-500"
                     value={rideDetails.time}
                     onChange={handleInputChange}
@@ -220,7 +223,7 @@ export default function Offer() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols gap-4">
               <div className="flex flex-col">
                 <div className="flex items-center border rounded-lg p-3">
                   <Car className="w-5 h-5 text-gray-400 mr-2" />
@@ -232,23 +235,10 @@ export default function Offer() {
                   >
                     <option value="">Select Vehicle</option>
                     <option value="car">Car</option>
-                    <option value="bike">Bike</option>
                     <option value="rickshaw">Rickshaw</option>
                   </select>
                 </div>
                 {errors.vehicle && <p className="text-red-500 text-sm mt-1">{errors.vehicle}</p>}
-              </div>
-              
-              <div className="flex items-center border rounded-lg p-3">
-                <Car className="w-5 h-5 text-gray-400 mr-2" />
-                <input
-                  type="text"
-                  name="vehicle_model"
-                  placeholder="Vehicle Model (Optional)"
-                  className="w-full outline-none bg-transparent"
-                  value={rideDetails.vehicle_model}
-                  onChange={handleInputChange}
-                />
               </div>
             </div>
 
@@ -258,6 +248,7 @@ export default function Offer() {
           </div>
         </form>
       </div>
+   
     </div>
   );
 }

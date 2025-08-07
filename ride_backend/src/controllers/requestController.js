@@ -6,8 +6,6 @@ import {
 } from "../models/requestModel.js"
 export async function sendRequest(req, res) {
     try {
-      // FIX: The model now consistently returns an object { success, message }.
-      // The controller now correctly destructures and uses this object.
       const { success, message } = await handleUserSentRequest(req.body);
       
       res.status(success ? 200 : 400).json({

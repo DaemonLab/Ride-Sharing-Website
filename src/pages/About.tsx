@@ -1,4 +1,3 @@
-import React from 'react';
 import { Shield, Users, Award, BookOpen } from 'lucide-react';
 
 export default function About() {

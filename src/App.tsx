@@ -14,6 +14,8 @@ import BookRide from "./pages/BookRide";
 import BookingSuccess from "./pages/BookingSuccess";
 import GroupMembers from "./pages/GroupMembers";
 import Requests from "./pages/Requests";
+import ThisRide from "./pages/Ride";
+import Chat from "./pages/Chats";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
@@ -39,6 +41,8 @@ function App() {
                 <Route path="/book-ride" element={<BookRide />} />
                 <Route path="/booking-success" element={<BookingSuccess />} />
                 <Route path="/requests" element={<Requests />} />
+                <Route path="/ride/:rideId" element={<ThisRide rideId={""} />} />
+                <Route path="/chat/:rideId" element={<Chat />} />
               </Route>
               <Route path="/group-members" element={<GroupMembers />} />
               <Route path="/dummy" element={<Dummy />} />

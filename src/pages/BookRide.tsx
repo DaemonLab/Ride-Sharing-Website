@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, Calendar, Clock, Car, ArrowLeft, Minus, Plus, User } from 'lucide-react';
-import Button from '../components/Button';
-import { useAuth } from '../context/AuthContext';
-import apiClient from '../services/api';
-import { toast } from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  MapPin,
+  Calendar,
+  Clock,
+  Car,
+  ArrowLeft,
+  Minus,
+  Plus,
+  User,
+} from "lucide-react";
+import Button from "../components/Button";
+import { useAuth } from "../context/AuthContext";
+import apiClient from "../services/api";
+import { toast , Toaster} from "react-hot-toast";
 
 interface RideDetails {
   _id: string;
@@ -28,16 +37,16 @@ export default function BookRide() {
   const location = useLocation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  
+
   const rideDetails = location.state?.rideDetails as RideDetails | undefined;
 
   useEffect(() => {
     if (!rideDetails) {
-      toast.error('No ride details found. Redirecting...');
-      navigate('/find');
+      toast.error("No ride details found. Redirecting...");
+      navigate("/find");
     }
   }, [rideDetails, navigate]);
-  
+
   const [seatsRequested, setSeatsRequested] = useState(1);
 
   if (!rideDetails) {
@@ -53,35 +62,39 @@ export default function BookRide() {
 
   const handleRequestRide = async () => {
     if (!user?.id) {
-      toast.error('Please sign in to request a ride');
-      navigate('/login');
+      toast.error("Please sign in to request a ride");
+      navigate("/login");
+      return;
+    }
+    if (user.id === rideDetails.createdBy.id) {
+      toast.error("You cannot book your own ride.");
       return;
     }
 
     setLoading(true);
     try {
-      // NOTE: The API call remains the same
-      const response = await apiClient.sendRideRequest(rideDetails._id, user.id);
-      
-      // FIX: Handle both success and business logic failures gracefully
+      const response = await apiClient.sendRideRequest(
+        rideDetails._id,
+        user.id
+      );
+
       if (response.success) {
-        toast.success(response.message);
-        setTimeout(() => navigate('/requests'), 1500);
+        setTimeout(() => navigate("/requests"), 1500);
       } else {
-        // This will show messages like "You cannot book your own ride."
-        toast.error(response.message || 'An unknown error occurred.');
+        toast.error(response.message || "An unknown error occurred.");
       }
     } catch (error: any) {
-      console.error('Error requesting ride:', error);
-      // This catches network errors or 500 server errors
-      const errorMessage = error.response?.data?.message || 'Failed to send ride request. Please try again.';
+      console.error("Error requesting ride:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to send ride request. Please try again.";
       toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
   const handleSeatChange = (amount: number) => {
-    setSeatsRequested(prev => {
+    setSeatsRequested((prev) => {
       const newSeats = prev + amount;
       if (newSeats < 1) return 1;
       if (newSeats > rideDetails.seatsAvailable) {
@@ -91,13 +104,17 @@ export default function BookRide() {
       return newSeats;
     });
   };
-  
+
   const totalPrice = (rideDetails.totalCost * seatsRequested).toFixed(2);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 mt-8">
+      <Toaster position="top-right" reverseOrder={false} />
       <div className="container mx-auto px-4">
-        <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-900 mb-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+        >
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to Results
         </button>
@@ -133,12 +150,14 @@ export default function BookRide() {
                   <span>{rideDetails.time}</span>
                 </div>
               </div>
-                 <div className="flex items-center pt-2 border-t mt-2">
+              <div className="flex items-center pt-2 border-t mt-2">
                 <User className="w-5 h-5 text-gray-400 mr-3 shrink-0" />
                 <div>
                   <p className="text-sm text-gray-500">Ride Created By</p>
                   {/* FIX: Use optional chaining to prevent crash if createdBy is undefined */}
-                  <p className="font-medium">{rideDetails.createdBy?.name || 'A driver'}</p>
+                  <p className="font-medium">
+                    {rideDetails.createdBy?.name || "A driver"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -148,37 +167,51 @@ export default function BookRide() {
           <div className="bg-white rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Seats & Price</h2>
             <div className="flex items-center justify-between">
-                <label className="block font-medium text-gray-700">How many seats?</label>
-                <div className="flex items-center gap-4">
-                    <Button variant="outline" size="sm" onClick={() => handleSeatChange(-1)} disabled={seatsRequested <= 1}>
-                        <Minus className="h-4 w-4"/>
-                    </Button>
-                    <span className="font-bold text-lg w-8 text-center">{seatsRequested}</span>
-                    <Button variant="outline" size="sm" onClick={() => handleSeatChange(1)} disabled={seatsRequested >= rideDetails.seatsAvailable}>
-                        <Plus className="h-4 w-4"/>
-                    </Button>
-                </div>
+              <label className="block font-medium text-gray-700">
+                How many seats?
+              </label>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSeatChange(-1)}
+                  disabled={seatsRequested <= 1}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="font-bold text-lg w-8 text-center">
+                  {seatsRequested}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSeatChange(1)}
+                  disabled={seatsRequested >= rideDetails.seatsAvailable}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="mt-4 pt-4 border-t space-y-2">
-                 <div className="flex justify-between">
-                    <span className="text-gray-600">Price per seat</span>
-                    <span>₹{rideDetails.totalCost.toFixed(2)}</span>
-                </div>
-                 <div className="flex justify-between font-bold text-lg">
-                    <span>Total Price</span>
-                    <span>₹{totalPrice}</span>
-                </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Price per seat</span>
+                <span>₹{rideDetails.totalCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-lg">
+                <span>Total Price</span>
+                <span>₹{totalPrice}</span>
+              </div>
             </div>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="mt-6">
-            <Button 
+            <Button
               className="w-full"
               onClick={handleRequestRide}
               disabled={loading}
             >
-              {loading ? 'Sending Request...' : `Send Ride Request`}
+              {loading ? "Sending Request..." : `Send Ride Request`}
             </Button>
           </div>
         </div>

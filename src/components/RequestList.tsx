@@ -27,7 +27,9 @@ export const RequestList: React.FC<RequestListProps> = ({ requests, type, onActi
           <div className="flex justify-between items-start">
             <div>
               <h3 className="font-medium">
-              {type === 'sent' ? `You requested a ride to ${request.destination}` : `Request from ${request.requestBy}`}
+              {type === 'sent' 
+                ? `You requested a ride to ${request.destination}` 
+                : `Request from ${request.requestByName || `User ${request.requestBy}`}`}
               </h3>
               {request.source && request.destination && (
                 <p className="text-gray-600">
@@ -40,8 +42,8 @@ export const RequestList: React.FC<RequestListProps> = ({ requests, type, onActi
                   {request.time && ` • ${request.time}`}
                 </p>
               )}
-              <p className="text-sm mt-2">
-                Status: <span className="font-medium">{request.requestStatus}</span>
+              <p className="text-sm mt-2 ">
+                Status: <span className={`font-medium ${request.requestStatus === 'Pending' ? 'text-yellow-500' : request.requestStatus === 'Accepted' ? 'text-green-500' : 'text-red-500'}`}>{request.requestStatus}</span>
               </p>
             </div>
             

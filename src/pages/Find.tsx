@@ -72,7 +72,6 @@ export default function Find() {
     fetchInitialRides();
   }, [isAuthenticated, login, user?.email]);
 
-  // MODIFICATION: Changed navigation route to /book-ride and passed state.
   const handleBooking = (ride: Ride) => {
     navigate('/book-ride', { 
       state: {

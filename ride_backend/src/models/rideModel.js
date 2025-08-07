@@ -23,10 +23,10 @@ export async function getPendingRides(body) {
 }
 
 export async function getFilteredPendingRides(body) {
-  const source = body.source || body.from || '';
-  const destination = body.destination || body.to || '';
-  const date = body.date || '';
-  
+  const source = body.source || body.from || "";
+  const destination = body.destination || body.to || "";
+  const date = body.date || "";
+
   let query = `
       SELECT 
         r."rideID", r.source, r.destination, r.date, r.time, r."seatsAvailable", 
@@ -36,27 +36,27 @@ export async function getFilteredPendingRides(body) {
       INNER JOIN users u ON u.id = r."createdBy"
       WHERE "rideStatus" = $1
       AND "seatsAvailable" > $2`;
-  
+
   let values = ["Pending", 0];
   const conditions = [];
-  
+
   if (date && date.trim() !== "") {
     conditions.push(`date = $${values.length + 1}`);
     values.push(date.trim());
   }
-  
+
   if (source && source.trim() !== "") {
     conditions.push(`source ILIKE $${values.length + 1}`);
     values.push(`%${source.trim()}%`);
   }
-  
+
   if (destination && destination.trim() !== "") {
     conditions.push(`destination ILIKE $${values.length + 1}`);
     values.push(`%${destination.trim()}%`);
   }
-  
+
   if (conditions.length > 0) {
-    query += ' AND (' + conditions.join(' OR ') + ')';
+    query += " AND (" + conditions.join(" OR ") + ")";
   }
 
   try {
@@ -113,6 +113,13 @@ export async function addNewlyCreatedRide(body) {
   }
 }
 
+export async function getThisRideById(rideID) {
+  const query = `
+    SELECT * FROM rides WHERE "rideID" = $1`;
+  const response = await pool.query(query, [rideID]);
+  return response.rows[0];
+}
+
 // upcoming rides (khudki banai ho + dusre ne banai ho)
 export async function getUpcomingRides(body) {
   const { userID } = body;
@@ -121,12 +128,12 @@ export async function getUpcomingRides(body) {
   const query = `
   SELECT 
     r."rideID", 
-    r."createdBy", 
+    r."createdBy" as "creatorID", 
     r.source, 
     r.destination, 
     r.date, 
     r.time, 
-    r."seatsAvailable", -- FIX: Corrected typo from "seatsAvailabel"
+    r."seatsAvailable", 
     r."totalCost", 
     r."vehicleType",
     u1.name AS "creatorName",
@@ -158,7 +165,7 @@ export async function getUpcomingRides(body) {
 
   GROUP BY 
     r."rideID", r."createdBy", r.source, r.destination, r.date, r.time, 
-    r."seatsAvailable", -- FIX: Corrected typo from "seatsAvailabel"
+    r."seatsAvailable", 
     r."totalCost", r."vehicleType", 
     r."rideStatus", u1.name
 `;
@@ -171,10 +178,6 @@ export async function getUpcomingRides(body) {
   }
 }
 
-
-
-
-
 // completed rides (khudki banai ho + dusre ne banai ho)
 export async function getCompletedRides(body) {
   const { userID } = body;
@@ -182,12 +185,12 @@ export async function getCompletedRides(body) {
   const query = `
     SELECT 
       r."rideID", 
-      r."createdBy", 
+      r."createdBy" as "creatorID", 
       r.source, 
       r.destination, 
       r.date, 
       r.time, 
-      r."seatsAvailable", -- FIX: Corrected typo from "seatsAvailabel"
+      r."seatsAvailable",
       r."totalCost", 
       r."vehicleType",
       u1.name AS "creatorName",
@@ -233,3 +236,4 @@ export async function getCompletedRides(body) {
     throw new Error(error.message);
   }
 }
+
