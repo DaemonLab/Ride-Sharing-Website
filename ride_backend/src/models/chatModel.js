@@ -45,10 +45,15 @@ export async function addMessage({ rideID, user_id, name, message, timestamp }) 
 
 export async function getOlderMessages({ rideID }) {
   const query = `
-    SELECT * FROM groupChat 
-    WHERE rideID = $1
-    ORDER BY messageDate DESC, messageTime DESC
-  `;
+  SELECT 
+  gc.*, 
+  u.name  
+  FROM groupChat gc
+  JOIN users u ON gc.messageBy = u.id
+  WHERE gc.rideID = $1
+  ORDER BY gc.messageDate DESC, gc.messageTime DESC
+`;
+
   try {
     const response = await pool.query(query, [rideID]);
     return response.rows;
