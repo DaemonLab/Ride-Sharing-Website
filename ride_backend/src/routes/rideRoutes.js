@@ -13,7 +13,7 @@ from "../controllers/rideController.js"
 const router = express.Router();
 
 router.get("/availableRides" , getAllPendingRides);
-router.get("/ride/:id" , getRideById);
+router.get("/:id" , getRideById);
 router.post("/filteredAvailableRides" , getAllFilteredRides);
 router.post("/addRide" , addNewRide);
 router.post("/user/upcoming", getAllUpcomingRides);

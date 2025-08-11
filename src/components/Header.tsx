@@ -4,20 +4,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, User } from "lucide-react";
 import Button from "./Button";
 import { useAuth } from "../hooks/useAuth";
-import Text3D from "./Text3D";
+import apiClient, { RideRequest } from "../services/api";
+import { useRequests } from "../context/RequestContext";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const { isAuthenticated, logout } = useAuth();
+  const { receivedRequests } = useRequests();
+  const receivedRequestsCount = receivedRequests.length;
 
   const navItems = [
     { label: "Home", path: "/" },
     { label: "Find a Ride", path: "/find" },
     { label: "Offer a Ride", path: "/offer" },
     // { label: "Rides", path: "/rides" },
-    { label: "My Requests", path: "/requests" },
-
+    { label: "Ride Requests", path: "/requests" },
   ];
 
   const isActivePath = (path: string) => location.pathname === path;
@@ -48,7 +50,9 @@ export default function Header() {
           {/* Logo */}
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Link to="/" className="flex items-center">
-              <span className="text-2xl font-bold text-blue-600">RideShare</span>
+              <span className="text-2xl font-bold text-blue-600">
+                RideShare
+              </span>
             </Link>
           </motion.div>
 
@@ -63,7 +67,14 @@ export default function Header() {
                   }`}
                 >
                   {item.label}
+
+                  {item.path === "/requests" && receivedRequestsCount > 0 && (
+                    <span className="ml-2 inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold">
+                      {receivedRequestsCount}
+                    </span>
+                  )}
                 </Link>
+
                 {isActivePath(item.path) && (
                   <motion.div
                     className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
@@ -97,6 +108,7 @@ export default function Header() {
                   <Button
                     variant="secondary"
                     size="sm"
+                    className="hover:bg-red-500 hover:text-white"
                     onClick={() => logout()}
                   >
                     Sign Out
@@ -187,7 +199,7 @@ export default function Header() {
                   >
                     <Button
                       variant="secondary"
-                      className="w-full"
+                      className="w-full hover:bg-red-500"
                       onClick={() => {
                         logout();
                         setIsMenuOpen(false);

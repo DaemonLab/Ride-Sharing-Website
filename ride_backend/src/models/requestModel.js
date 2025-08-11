@@ -96,7 +96,7 @@ export async function handleUserReceivedRequest(body) {
         UPDATE rides 
         SET "seatsAvailable" = "seatsAvailable" - 1
         WHERE "rideID" = $1 AND "seatsAvailable" > 0
-        RETURNING *
+        RETURNING "seatsAvailable", "totalSeats"
       `;
       
       const seatUpdateResult = await client.query(updateSeatsQuery, [rideID]);

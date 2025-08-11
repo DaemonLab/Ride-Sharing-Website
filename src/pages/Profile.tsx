@@ -9,10 +9,6 @@ import {
   Car,
   AlertCircle,
   RefreshCw,
-  Settings,
-  LogOut,
-  Phone,
-  Edit3,
 } from "lucide-react";
 import Button from "../components/Button";
 import { UserProfile } from "../types";
@@ -22,7 +18,6 @@ import toast from "react-hot-toast";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
-// Loading skeleton component
 const RideSkeleton = () => (
   <div className="border rounded-lg p-4 animate-pulse">
     <div className="flex justify-between items-start">
@@ -47,7 +42,6 @@ const RideSkeleton = () => (
   </div>
 );
 
-// Error component
 const ErrorMessage = ({ message, onRetry }: { message: string; onRetry?: () => void }) => (
   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
     <div className="flex items-center">
@@ -55,9 +49,9 @@ const ErrorMessage = ({ message, onRetry }: { message: string; onRetry?: () => v
       <span className="text-red-700">{message}</span>
     </div>
     {onRetry && (
-      <Button 
-        variant="secondary" 
-        size="sm" 
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={onRetry}
         className="mt-3 text-red-600 border-red-200 hover:bg-red-50"
       >
@@ -68,12 +62,11 @@ const ErrorMessage = ({ message, onRetry }: { message: string; onRetry?: () => v
   </div>
 );
 
-// Empty state component
-const EmptyState = ({ 
-  type, 
-  onCreateRide 
-}: { 
-  type: 'upcoming' | 'history'; 
+const EmptyState = ({
+  type,
+  onCreateRide
+}: {
+  type: 'upcoming' | 'history';
   onCreateRide?: () => void;
 }) => (
   <div className="text-center py-12">
@@ -82,8 +75,8 @@ const EmptyState = ({
       {type === 'upcoming' ? 'No upcoming rides' : 'No ride history'}
     </h3>
     <p className="text-gray-500 mb-6">
-      {type === 'upcoming' 
-        ? "You don't have any upcoming rides scheduled." 
+      {type === 'upcoming'
+        ? "You don't have any upcoming rides scheduled."
         : "You haven't completed any rides yet."}
     </p>
     {type === 'upcoming' && onCreateRide && (
@@ -112,7 +105,7 @@ export default function Profile() {
   
   const [upcomingRides, setUpcomingRides] = useState<Ride[]>([]);
   const [completedRides, setCompletedRides] = useState<Ride[]>([]);
-  const [cancelingRides, setCancelingRides] = useState<Set<string>>(new Set());
+  // const [cancelingRides, setCancelingRides] = useState<Set<string>>(new Set());
 
   // Fetch profile data
   const fetchProfile = useCallback(async () => {
@@ -189,28 +182,31 @@ export default function Profile() {
     setIsRefreshing(false);
   };
 
-  const handleCancelParticipation = async (rideId: string) => {
-    if (!profile.userID || !rideId) return;
+  // const handleCancelParticipation = async (e: React.MouseEvent, rideId: string) => {
+  //   e.preventDefault(); // Prevent navigation when clicking the cancel button
+  //   if (!profile.userID || !rideId) return;
     
-    setCancelingRides(prev => new Set(prev).add(rideId));
+  //   setCancelingRides(prev => new Set(prev).add(rideId));
     
-    try {
-      const response = await apiClient.cancelRideParticipation(rideId, profile.userID);
-      if (response.success) {
-        toast.success('Successfully canceled ride participation');
-        setUpcomingRides(prev => prev.filter(ride => ride._id !== rideId));
-      }
-    } catch (error) {
-      console.error('Cancel participation error:', error);
-      toast.error('Failed to cancel participation');
-    } finally {
-      setCancelingRides(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(rideId);
-        return newSet;
-      });
-    }
-  };
+  //   try {
+  //     const response = await apiClient.cancelRideParticipation(rideId, profile.userID);
+  //     if (response.success) {
+  //       toast.success('Successfully canceled ride participation');
+  //       setUpcomingRides(prev => prev.filter(ride => ride._id !== rideId));
+  //     } else {
+  //       toast.error(response.message || 'Failed to cancel participation');
+  //     }
+  //   } catch (error) {
+  //     console.error('Cancel participation error:', error);
+  //     toast.error('Failed to cancel participation');
+  //   } finally {
+  //     setCancelingRides(prev => {
+  //       const newSet = new Set(prev);
+  //       newSet.delete(rideId);
+  //       return newSet;
+  //     });
+  //   }
+  // };
 
   // Loading state
   if (isLoading) {
@@ -383,14 +379,15 @@ export default function Profile() {
               ) : activeTab === "rides" ? (
                 <div className="space-y-4">
                   {upcomingRides.length > 0 ? (
-                    upcomingRides.map((ride) => (
-                      <div
-                        key={ride._id}
-                        className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all hover:border-blue-200 bg-gradient-to-r from-white to-blue-50"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center text-lg font-semibold text-gray-800">
+                    upcomingRides.slice().reverse().map((ride) => (
+                      <Link to={`/ride/${ride._id}`} key={ride._id} className="block">
+                        <div
+                          className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all hover:border-blue-200 bg-gradient-to-r from-white to-blue-50"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              {/* Ride details */}
+                               <div className="flex items-center text-lg font-semibold text-gray-800">
                               <MapPin className="w-5 h-5 text-blue-500 mr-2" />
                               <span>
                                 {ride.source} → {ride.destination}
@@ -411,25 +408,26 @@ export default function Profile() {
                                 <span>{ride.time}</span>
                               </div>
                             </div>
+                            </div>
+                            {/* <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => handleCancelParticipation(e, ride._id)}
+                              disabled={cancelingRides.has(ride._id)}
+                              className="ml-4 text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              {cancelingRides.has(ride._id) ? (
+                                <>
+                                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                  Canceling...
+                                </>
+                              ) : (
+                                'Cancel'
+                              )}
+                            </Button> */}
                           </div>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleCancelParticipation(ride._id)}
-                            disabled={cancelingRides.has(ride._id)}
-                            className="ml-4 text-red-600 border-red-200 hover:bg-red-50"
-                          >
-                            {cancelingRides.has(ride._id) ? (
-                              <>
-                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                                Canceling...
-                              </>
-                            ) : (
-                              'Cancel'
-                            )}
-                          </Button>
                         </div>
-                      </div>
+                      </Link>
                     ))
                   ) : (
                     <EmptyState type="upcoming" />
@@ -438,12 +436,13 @@ export default function Profile() {
               ) : (
                 <div className="space-y-4">
                   {completedRides.length > 0 ? (
-                    completedRides.map((ride) => (
-                      <div
-                        key={ride._id}
-                        className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all bg-gradient-to-r from-white to-green-50"
-                      >
-                        <div className="flex justify-between items-start">
+                    completedRides.slice().reverse().map((ride) => (
+                      <Link to={`/ride/${ride._id}`} key={ride._id} className="block">
+                        <div
+                          className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all bg-gradient-to-r from-white to-green-50"
+                        >
+                          {/* ... completed ride details ... */}
+                           <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center text-lg font-semibold text-gray-800">
                               <MapPin className="w-5 h-5 text-gray-500 mr-2" />
@@ -472,7 +471,8 @@ export default function Profile() {
                             Completed
                           </span>
                         </div>
-                      </div>
+                        </div>
+                      </Link>
                     ))
                   ) : (
                     <EmptyState type="history" />

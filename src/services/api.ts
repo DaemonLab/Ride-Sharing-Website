@@ -12,10 +12,14 @@ export interface RideRequest {
   destination?: string;
   date?: string;
   time?: string;
+  // createdAt : string;
+  // updatedAt : string;
+  // statusChangedAt?: string;
 }
 
 // Frontend Ride interface matching backend fields
 export interface Ride {
+  totalSeats: number;
   _id: string;
   source: string;
   destination: string;
@@ -33,6 +37,7 @@ export interface Ride {
 
 // Backend data structure (for internal reference)
 interface BackendRide {
+  totalSeats: number;
   rideID: string;
   source: string;
   destination: string;
@@ -72,6 +77,7 @@ const axiosInstance = axios.create({
 });
 
 export interface CreateRideData {
+  totalSeats?: number; // Optional for future-proofing
   email: string;
   source: string;
   destination: string;
@@ -91,7 +97,8 @@ const apiClient = {
     date: ride.date,
     time: ride.time,
     totalCost: ride.totalCost,
-    seatsAvailable: ride.seatsAvailable,
+    seatsAvailable: ride.seatsAvailable -1,
+    totalSeats: ride.totalSeats ,
     vehicleType: ride.vehicleType,
     rideStatus: ride.rideStatus || "available",
     createdBy: {
@@ -156,6 +163,7 @@ const apiClient = {
         time: ride.time,
         totalCost: ride.totalCost,
         seatsAvailable: ride.seatsAvailable,
+        totalSeats: ride.totalSeats,
         vehicleType: ride.vehicleType,
         rideStatus: ride.rideStatus,
         createdBy: {
@@ -181,7 +189,22 @@ const apiClient = {
       });
       const backendData = response.data.data || [];
       console.log("Upcoming Rides for user:", userID, backendData);
-      return backendData.map(apiClient.transformBackendRide);
+      return backendData.map((ride: BackendRide) => ({
+        _id: ride.rideID,
+        source: ride.source,
+        destination: ride.destination,
+        date: ride.date,
+        time: ride.time,
+        totalCost: ride.totalCost,
+        seatsAvailable: ride.seatsAvailable,
+        totalSeats: ride.totalSeats,
+        vehicleType: ride.vehicleType,
+        rideStatus: ride.rideStatus || "available",
+        createdBy: {
+          id: ride.creatorId,
+          name: ride.creatorName,
+        },
+      }));
     } catch (error) {
       console.error("Error fetching upcoming rides:", error);
       throw error;
@@ -222,6 +245,7 @@ const apiClient = {
         time: createdRide.time,
         totalCost: createdRide.totalCost,
         seatsAvailable: createdRide.seatsAvailable,
+        totalSeats: createdRide.totalSeats || createdRide.seatsAvailable,
         vehicleType: createdRide.vehicleType,
         rideStatus: "available", // Newly created ride is available by default
         createdBy: {

@@ -1,10 +1,33 @@
 import pool from "../config/db.js";
 import { logger } from "../config/logger.js";
+import { DateTime } from 'luxon';
+
+export async function updateCompletedRides() {
+  const now = DateTime.now().toISO();
+  const query = `
+    UPDATE rides 
+    SET "rideStatus" = 'Completed'
+    WHERE "rideStatus" = 'Upcoming' 
+    AND (date || ' ' || time)::timestamp < $1
+    RETURNING "rideID", source, destination, date, time
+  `;
+  
+  try {
+    const result = await pool.query(query, [now]);
+    if (result.rowCount > 0) {
+      logger.info(`Updated ${result.rowCount} rides to completed status`);
+    }
+    return result.rows;
+  } catch (error) {
+    logger.error(`Error updating completed rides: ${error.message}`);
+    throw error;
+  }
+}
 
 export async function getPendingRides(body) {
   const query = `
         SELECT 
-            r."rideID", r.source, r.destination, r.date, r.time, r."seatsAvailable", 
+            r."rideID", r.source, r.destination, r.date, r.time, r."seatsAvailable", r."totalSeats", 
             r."totalCost", r."vehicleType", r."rideStatus",
             u.id as "creatorId", u.name as "creatorName"
         FROM rides r
@@ -29,7 +52,7 @@ export async function getFilteredPendingRides(body) {
 
   let query = `
       SELECT 
-        r."rideID", r.source, r.destination, r.date, r.time, r."seatsAvailable", 
+        r."rideID", r.source, r.destination, r.date, r.time, r."seatsAvailable", r."totalSeats", 
         r."totalCost", r."vehicleType", r."rideStatus",
         u.id as "creatorId", u.name as "creatorName"
       FROM rides r
@@ -88,20 +111,20 @@ export async function addNewlyCreatedRide(body) {
 
   const query = `
       INSERT INTO rides 
-      ("createdBy", source, destination, date, time, "seatsAvailable", "totalCost", "vehicleType", "rideStatus") 
+      ("createdBy", source, destination, date, time, "seatsAvailable", "totalSeats", "totalCost", "vehicleType", "rideStatus") 
       VALUES 
-      ($1, $2, $3, $4, $5, $6, $7, $8, $9)`;
+      ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9)`;
   const values = [
     userID,
     source,
     destination,
     date,
     time,
-    seatsAvailable,
+    seatsAvailable, // seatsAvailable
     totalCost,
     vehicleType,
     "Pending",
-  ];
+  ]; // totalSeats will be set to seatsAvailable on creation
   try {
     const result = await pool.query(`${query} RETURNING *`, values);
     const createdRide = result.rows[0];
@@ -115,7 +138,14 @@ export async function addNewlyCreatedRide(body) {
 
 export async function getThisRideById(rideID) {
   const query = `
-    SELECT * FROM rides WHERE "rideID" = $1`;
+    SELECT 
+      r."rideID", r.source, r.destination, r.date, r.time, r."seatsAvailable", r."totalSeats", 
+      r."totalCost", r."vehicleType", r."rideStatus",
+      u.id as "creatorId", u.name as "creatorName"
+    FROM rides r
+    INNER JOIN users u ON u.id = r."createdBy"
+    WHERE r."rideID" = $1
+  `;
   const response = await pool.query(query, [rideID]);
   return response.rows[0];
 }
@@ -133,7 +163,7 @@ export async function getUpcomingRides(body) {
     r.destination, 
     r.date, 
     r.time, 
-    r."seatsAvailable", 
+    r."seatsAvailable", r."totalSeats", 
     r."totalCost", 
     r."vehicleType",
     u1.name AS "creatorName",
@@ -190,7 +220,7 @@ export async function getCompletedRides(body) {
       r.destination, 
       r.date, 
       r.time, 
-      r."seatsAvailable",
+      r."seatsAvailable", r."totalSeats",
       r."totalCost", 
       r."vehicleType",
       u1.name AS "creatorName",
