@@ -3,7 +3,8 @@ import {
   getFilteredPendingRides,
   addNewlyCreatedRide,
   getUpcomingRides,
-  getCompletedRides
+  getCompletedRides,
+  getThisRideById
 } from "../models/rideModel.js";
 
 
@@ -46,16 +47,35 @@ export async function getAllFilteredRides(req, res) {
 
 export async function addNewRide(req, res) {
   try {
-    await addNewlyCreatedRide(req.body);
+    const createdRide = await addNewlyCreatedRide(req.body);
     res.status(201).json({
       success: true,
-      message: "Ride created successfully"
+      message: "Ride created successfully",
+      data: createdRide
     });
   } catch (error) {
     console.error("Error in creating ride:", error.stack);
     res.status(500).json({
       success: false,
       message: "Failed to create ride",
+      error: error.message
+    });
+  }
+}
+
+export async function getRideById(req, res) {
+  try {
+    const ride = await getThisRideById(req.params.id);
+    res.status(200).json({
+      success: true,
+      message: "Ride fetched successfully",
+      data: ride
+    });
+  } catch (error) {
+    console.error(`Error in fetching ride by id: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch ride by id",
       error: error.message
     });
   }

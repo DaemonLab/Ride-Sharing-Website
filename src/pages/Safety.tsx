@@ -1,5 +1,4 @@
-import React from 'react';
-import { Shield, Bell, UserCheck, Phone } from 'lucide-react';
+import { Shield, Bell } from 'lucide-react';
 
 export default function Safety() {
   return (

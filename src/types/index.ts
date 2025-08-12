@@ -32,8 +32,8 @@ export interface User {
 }
 
 export interface UserProfile {
-  studentId: string;
+  userID: string;
   name: string;
   email: string;
-  photoUrl?: string; // Optional field for profile photo
+  photoUrl?: string; 
 }

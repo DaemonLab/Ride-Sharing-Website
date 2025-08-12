@@ -12,6 +12,8 @@ import loginRoutes from "./routes/loginRoutes.js";
 import dotenv from "dotenv";
 import { authenticate, isAdmin } from "./middleware/authMiddleware.js";
 import { logger } from "./config/logger.js";
+import cron from 'node-cron';
+import { updateCompletedRides } from "./models/rideModel.js";
 
 
 
@@ -55,6 +57,7 @@ app.use(authenticate);
 app.use("/rides", rideRoutes);// completed mark krne ke liye time se dekh rhe h , jab time khtm ho jye toh apne aap completed mark ho jye
 app.use("/chat", chatRoutes);
 app.use("/request", requestRoutes);
+app.use("/chat", chatRoutes);
 app.use("/user", userRoutes);
 app.use(supportRoutes)
 
@@ -68,5 +71,20 @@ async function connectDB() {
 }
 
 connectDB();
+
+// Schedule the cron job to run every minute
+cron.schedule('* * * * *', async () => {
+  try {
+    logger.info('Running scheduled task to update completed rides...');
+    const updatedRides = await updateCompletedRides();
+    if (updatedRides && updatedRides.length > 0) {
+      logger.info(`Successfully updated ${updatedRides.length} rides to completed status`);
+    }
+  } catch (error) {
+    logger.error(`Error in scheduled task: ${error.message}`);
+  }
+});
+
+logger.info('Cron job scheduled to check for completed rides every minute');
 
 export default app;
