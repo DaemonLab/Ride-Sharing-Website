@@ -7,9 +7,6 @@ import http from 'node:http';
 import { registerChatHandlers } from "./src/chat.js";
 dotenv.config();
 
-import http from "http"; // 1. Import the native http module
-import { initSocket } from "./src/config/socket-config.js"; // 2. Import your socket initializer
-import { registerChatHandlers } from "./src/chat.js"; // 3. Import your chat event handlers
 import app from "./src/app.js"; // Your existing Express app
 
 const PORT = process.env.SERVER_PORT || 3000;

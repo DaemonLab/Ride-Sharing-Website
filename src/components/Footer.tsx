@@ -31,25 +31,13 @@ export default function Footer() {
       { label: "Safety", path: "/safety" },
     ],
     Support: [
-      { label: "Help Center", path: "/help" },
+      { label: "Help Center", path: "/help" }, 
       { label: "FAQs", path: "/faqs" },
       { label: "Report an Issue", path: "/report" },
     ],
   };
 
   const socialLinks = [
-    {
-      icon: <Linkedin className="w-5 h-5" />,
-      href: "#",
-      label: "LinkedIn",
-      color: "hover:text-blue-400",
-    },
-    {
-      icon: <Github className="w-5 h-5" />,
-      href: "#",
-      label: "Github",
-      color: "hover:text-purple-400",
-    },
     {
       icon: <Instagram className="w-5 h-5" />,
       href: "#",
@@ -82,10 +70,10 @@ export default function Footer() {
   const BackToTop = () => (
     <button
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className="group relative overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 text-white p-3 rounded-full shadow-lg hover:shadow-violet-500/25 transition-all duration-300 hover:scale-110"
+      className="group relative overflow-hidden bg-white text-white p-3 rounded-full shadow-lg hover:shadow-gray-500/25 transition-all duration-300 hover:scale-110"
     >
-      <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-      <ChevronUp className="w-5 h-5 relative z-10 group-hover:animate-bounce" />
+      <div className="absolute inset-0 hover:bg-gray-200 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <ChevronUp className="w-5 h-5 text-blue-600 hover:text-gray-500 relative z-10 group-hover:animate-bounce" />
     </button>
   );
 
@@ -143,7 +131,9 @@ export default function Footer() {
                       placeholder="your@email.com"
                       className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent backdrop-blur-sm transition-all duration-300"
                     />
-                    <button className="px-6 py-3 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg">
+                    <button className="px-6 py-3 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg
+                    "
+                    >
                       <ArrowRight className="w-8 h-8 hover:rotate-45 transition-all duration-100" />
                     </button>
                   </div>

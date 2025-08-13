@@ -22,7 +22,8 @@ export default function Home() {
         className="min-h-screen flex items-center justify-center bg-cover bg-center"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?auto=format&fit=crop&q=80")',
+          // https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?auto=format&fit=crop&q=80
+            'linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("src/assets/carpool.jpg")',
         }}
       >
         <div className="container mx-auto px-4 text-center text-white">
@@ -36,11 +37,11 @@ export default function Home() {
               </p>
             </Text3D>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center z-1000">
             <Button
               size="lg"
               onClick={() => navigate("/find")}
-              className="hover:scale-105 transition-transform"
+              className="hover:scale-105 transition-transform "
             >
               Find a Ride
             </Button>
