@@ -2,13 +2,10 @@ import pool from "../config/db.js";
 import { logger } from "../config/logger.js";
 
 export async function getPendingRides() {
-  const now = new Date();
-  const currentTimeString = now.toISOString();  
-
   const updateQuery = `
     UPDATE rides
     SET "rideStatus" = 'Completed'
-    WHERE ("date" + "time") <= $1
+    WHERE ("date"::timestamp + "time") <= NOW()
     AND "rideStatus" != 'Completed'
   `;
 
@@ -18,13 +15,14 @@ export async function getPendingRides() {
     INNER JOIN users u ON u.id = r."createdBy"
     WHERE r."rideStatus" = $1
     AND r."seatsAvailable" > $2
+    AND ("date"::timestamp + "time") > NOW()
   `;
 
   try {
-    // Mark old rides as Completed
-    await pool.query(updateQuery, [currentTimeString]);
+    // Mark past rides as completed
+    await pool.query(updateQuery);
 
-    // Get future pending rides
+    // Get only future pending rides
     const values = ["Pending", 0];
     const response = await pool.query(selectQuery, values);
 
