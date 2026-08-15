@@ -7,7 +7,6 @@ import {
 } from "../models/rideModel.js";
 
 
-
 export async function getAllPendingRides(req, res) {
   try {
     const result = await getPendingRides();
@@ -46,7 +45,22 @@ export async function getAllFilteredRides(req, res) {
 
 export async function addNewRide(req, res) {
   try {
-    await addNewlyCreatedRide(req.body);
+    // Frontend sends: { from, to, date, time, seats, price, vehicle, vehicle_model }
+    // Map to backend model field names and inject email from session
+    const { from, to, date, time, seats, price, vehicle } = req.body;
+
+    const ridePayload = {
+      email: req.session.user.email,   // get user email from session (no frontend input needed)
+      source: from,
+      destination: to,
+      date,
+      time,
+      seatsAvailable: seats,
+      totalCost: price,
+      vehicleType: vehicle,
+    };
+
+    await addNewlyCreatedRide(ridePayload);
     res.status(201).json({
       success: true,
       message: "Ride created successfully"
@@ -64,7 +78,9 @@ export async function addNewRide(req, res) {
 
 export async function getAllUpcomingRides(req, res) {
   try {
-    const result = await getUpcomingRides(req.body);
+    // This is a GET request — no body. Read userID from the session.
+    const userID = req.session.user.id;
+    const result = await getUpcomingRides({ userID });
     res.status(200).json({
       success: true,
       message: "Upcoming rides fetched successfully",
@@ -83,7 +99,9 @@ export async function getAllUpcomingRides(req, res) {
 
 export async function getAllCompletedRides(req, res) {
   try {
-    const result = await getCompletedRides(req.body);
+    // This is a GET request — no body. Read userID from the session.
+    const userID = req.session.user.id;
+    const result = await getCompletedRides({ userID });
     res.status(200).json({
       success: true,
       message: "Completed rides fetched successfully",

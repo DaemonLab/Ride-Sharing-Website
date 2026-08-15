@@ -1,100 +1,63 @@
-import pool from "../config/db.js";
+import { prisma } from "../config/prisma.js";
 import { logger } from "../config/logger.js";
 
-export async function Details() {
-    const query = `
-    SELECT
-    *
-    FROM users
-    WHERE id = $1
-    `;
-    const values = [1];
-    let client;
-    try {
-        client = await pool.connect();
-        const response = await client.query(query, values);
-        return response.rows;
-    } catch (error) {
-        logger.error(`Database error in Details: ${error.message}`);
-        throw new Error(error.message);
-    } finally {
-        if (client) client.release();
-    }
-}
-
+/**
+ * Get a user by their internal DB id.
+ */
 export async function getUserById(id) {
-    const query = `
-    SELECT
-    *
-    FROM users
-    WHERE id = $1
-    `;
-    const values = [id];
-    let client;
-    try {
-        client = await pool.connect();
-        const response = await client.query(query, values);
-        return response.rows[0];
-    } catch (error) {
-        logger.error(`Database error in getUserById: ${error.message}`);
-        throw new Error(error.message);
-    } finally {
-        if (client) client.release();
-    }
+  try {
+    return await prisma.users.findUnique({ where: { id } });
+  } catch (error) {
+    logger.error(`Database error in getUserById: ${error.message}`);
+    throw new Error(error.message);
+  }
 }
 
+/**
+ * Find a user by their Google OAuth ID.
+ */
 export async function findByGoogleId(googleId) {
-    const result = await pool.query(
-        'SELECT * FROM users WHERE google_id = $1',
-        [googleId]
-    );
-    return result.rows[0];
+  try {
+    return await prisma.users.findUnique({ where: { google_id: googleId } });
+  } catch (error) {
+    logger.error(`Database error in findByGoogleId: ${error.message}`);
+    throw new Error(error.message);
+  }
 }
 
+/**
+ * Create a new user record after Google OAuth sign-in.
+ */
 export async function create(userData) {
-    const result = await pool.query(
-        `INSERT INTO users 
-       (google_id, email, name, picture)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-        [
-            userData.googleId,
-            userData.email,
-            userData.name,
-            userData.picture,
-        ]
-    );
-    return result.rows[0];
+  try {
+    return await prisma.users.create({
+      data: {
+        google_id: userData.googleId,
+        email: userData.email,
+        name: userData.name,
+        picture: userData.picture,
+      },
+    });
+  } catch (error) {
+    logger.error(`Database error in create: ${error.message}`);
+    throw new Error(error.message);
+  }
 }
 
+/**
+ * Update a user's mutable fields (name, picture).
+ */
 export async function update(id, userData) {
-    try {
-        let query = 'UPDATE users SET ';
-        const params = [];
-        const values = [];
+  try {
+    const data = {};
+    if (userData.name) data.name = userData.name;
+    if (userData.picture) data.picture = userData.picture;
 
-        if (userData.name) {
-            params.push(`name = $${values.length + 1}`);
-            values.push(userData.name);
-        }
+    if (Object.keys(data).length === 0) return null;
 
-        if (userData.picture) {
-            params.push(`picture = $${values.length + 1}`);
-            values.push(userData.picture);
-        }
-
-        if (params.length === 0) {
-            return null;
-        }
-
-        query += params.join(', ');
-        query += ` WHERE id = $${values.length + 1} RETURNING *`;
-        values.push(id);
-
-        const result = await pool.query(query, values);
-        return result.rows[0];
-    } catch (error) {
-        logger.error(`Database error in update: ${error.message}`);
-        throw new Error(error.message);
-    }
+    return await prisma.users.update({ where: { id }, data });
+  } catch (error) {
+    logger.error(`Database error in update: ${error.message}`);
+    throw new Error(error.message);
+  }
 }

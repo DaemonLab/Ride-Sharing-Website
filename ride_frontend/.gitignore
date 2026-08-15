@@ -1,33 +1,24 @@
 # Dependency directories
 node_modules/
-**/node_modules/
 
-# Production & build outputs
+# Production build output
 dist/
-**/dist/
 dist-ssr/
-build/
 
 # Environment files
 .env
 .env*.local
 *.env
-**/.env
-**/.env*.local
 
-# Log files
+# Vite cache
+.vite/
+
+# Logs
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Vite cache & temp files
-.vite/
-**/.vite/
-temp_lumina/
 
 # Editor & OS files
 .vscode/
@@ -35,8 +26,3 @@ temp_lumina/
 .idea/
 .DS_Store
 Thumbs.db
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?

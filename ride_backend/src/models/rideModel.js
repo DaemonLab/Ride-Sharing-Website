@@ -1,112 +1,95 @@
-import pool from "../config/db.js";
+import { prisma } from "../config/prisma.js";
 import { logger } from "../config/logger.js";
 
+/**
+ * Mark past rides as Completed, then return all future Pending rides
+ * with their creator's user info.
+ *
+ * The complex date+time comparison must stay as $queryRaw because
+ * Prisma doesn't natively support casting a string column to timestamp.
+ */
 export async function getPendingRides() {
-  const updateQuery = `
-    UPDATE rides
-    SET "rideStatus" = 'Completed'
-    WHERE ("date"::timestamp + "time") <= NOW()
-    AND "rideStatus" != 'Completed'
-  `;
-
-  const selectQuery = `
-    SELECT *
-    FROM rides r
-    INNER JOIN users u ON u.id = r."createdBy"
-    WHERE r."rideStatus" = $1
-    AND r."seatsAvailable" > $2
-    AND ("date"::timestamp + "time") > NOW()
-  `;
-
   try {
-    // Mark past rides as completed
-    await pool.query(updateQuery);
+    // 1. Mark expired rides as Completed
+    await prisma.$executeRaw`
+      UPDATE rides
+      SET "rideStatus" = 'Completed'
+      WHERE ("date"::timestamp + "time"::interval) <= NOW()
+      AND "rideStatus" != 'Completed'
+    `;
 
-    // Get only future pending rides
-    const values = ["Pending", 0];
-    const response = await pool.query(selectQuery, values);
+    // 2. Fetch all future pending rides with creator details
+    const rows = await prisma.$queryRaw`
+      SELECT r.*, u.name, u.email, u.picture
+      FROM rides r
+      INNER JOIN users u ON u.id = r."createdBy"
+      WHERE r."rideStatus" = 'Pending'
+        AND r."seatsAvailable" > 0
+        AND ("date"::timestamp + "time"::interval) > NOW()
+    `;
 
-    logger.info("Checked database successfully");
-    return response.rows;
+    logger.info("Fetched pending rides successfully");
+    return rows;
   } catch (error) {
     logger.error(`Error fetching pending rides: ${error.message}`);
     throw new Error(error.message);
   }
 }
 
-
-export async function getFilteredPendingRides(body) {
-  const { source, destination, date} = body;
-  let query = `
-      SELECT 
-      * FROM rides r
-      INNER JOIN users u ON u.id = r."createdBy"
-      WHERE "rideStatus" = $1
-      AND "seatsAvailable" > $2
-      AND date = $3`;
-  let values = ["Pending", 0, date];
-  let index = 4;
-
-  if (source !== null) {
-    if (source.length !== 0 && source.trim() !== "") {
-      query += ` AND source = $${index}`;
-      values.push(source.trim());
-      index++;
-    }
-  }
-  if (destination !== null) {
-    if (destination.length !== 0 && destination.trim() !== "") {
-      query += ` AND destination = $${index}`;
-      values.push(destination.trim());
-      index++;
-    }
-  }
+/**
+ * Get filtered pending rides by date, source, destination.
+ */
+export async function getFilteredPendingRides({ source, destination, date }) {
   try {
-    const response = await pool.query(query, values);
-    logger.info("Database checked successfully");
-    return response.rows;
+    const where = {
+      rideStatus: "Pending",
+      seatsAvailable: { gt: 0 },
+      date,
+    };
+
+    if (source && source.trim()) where.source = source.trim();
+    if (destination && destination.trim()) where.destination = destination.trim();
+
+    const rides = await prisma.rides.findMany({
+      where,
+      include: { creator: true },
+    });
+
+    logger.info("Filtered pending rides fetched successfully");
+    return rides;
   } catch (error) {
     logger.error(`Error fetching filtered pending rides: ${error.message}`);
     throw new Error(error.message);
   }
 }
 
-// mobile number ka input baar baar lena h ya signup ke time save krke rkhna h
+/**
+ * Add a newly created ride.
+ * Looks up the user by email, then creates the ride record.
+ */
 export async function addNewlyCreatedRide(body) {
-  const {
-    email,
-    source,
-    destination,
-    date,
-    time,
-    vehicleType,
-    seatsAvailable,
-    totalCost
-  } = body;
-  const query1 = `
-    SELECT id FROM users WHERE email = $1`;
-  const response = await pool.query(query1, [email]);
-  const userID = response.rows[0].id;
+  const { email, source, destination, date, time, vehicleType, seatsAvailable, totalCost } = body;
 
-  const query = `
-      INSERT INTO rides 
-      (createdBy,source, destination, date, time, seatsAvailable, totalCost, vehicleType, rideStatus, totalSeats) 
-      VALUES 
-      ($1 , $2 , $3 , $4 , $5 , $6 , $7 , $8 , $9, $10)`;
-  const values = [
-    userID,
-    source,
-    destination,
-    date,
-    time,
-    seatsAvailable,
-    totalCost,
-    vehicleType,
-    "Pending",
-    seatsAvailable
-  ];
   try {
-    await pool.query(query, values);
+    // Find the user by email to get their ID
+    const user = await prisma.users.findFirst({ where: { email } });
+    if (!user) throw new Error(`User with email ${email} not found`);
+
+    await prisma.rides.create({
+      data: {
+        createdBy: user.id,
+        source,
+        destination,
+        date,
+        time,
+        seatsAvailable,
+        totalSeats: seatsAvailable,
+        totalCost,
+        vehicleType,
+        rideStatus: "Pending",
+      },
+    });
+
     logger.info("Newly created ride added successfully");
   } catch (error) {
     logger.error(`Error adding newly created ride: ${error.message}`);
@@ -114,123 +97,97 @@ export async function addNewlyCreatedRide(body) {
   }
 }
 
-
-// upcoming rides (khudki banai ho + dusre ne banai ho)
-export async function getUpcomingRides(body) {
-  const { userID } = body;
-  const values = [userID];
-
-  const query = `
-  SELECT 
-    r."rideID", 
-    r."createdBy", 
-    r.source, 
-    r.destination, 
-    r.date, 
-    r.time, 
-    r."seatsAvailabel", 
-    r."totalCost", 
-    r."vehicleType",
-    u1.name AS "creatorName",
-    r."rideStatus",
-    STRING_AGG(u2.name, ', ') AS "ridePartnerNames"
-  FROM rides r
-
-  INNER JOIN users u1 
-    ON r."createdBy" = u1."id"
-
-  LEFT JOIN requests req 
-    ON req."rideID" = r."rideID"
-    AND req."requestStatus" = 'Accepted'
-
-  LEFT JOIN users u2 
-    ON req."requestBy" = u2."id"
-
-  WHERE r."rideStatus" = 'Pending'
-    AND (
-      r."createdBy" = $1
-      OR EXISTS (
-        SELECT 1
-        FROM requests req2
-        WHERE req2."rideID" = r."rideID"
-          AND req2."requestBy" = $1
-          AND req2."requestStatus" = 'Accepted'
-      )
-    )
-
-  GROUP BY 
-    r."rideID", r."createdBy", r.source, r.destination, r.date, r.time, 
-    r."seatsAvailabel", r."totalCost", r."vehicleType", 
-    r."rideStatus", u1.name
-`;
-
+/**
+ * Get upcoming (Pending) rides that the user created or joined.
+ * Uses $queryRaw for the complex GROUP BY + EXISTS subquery.
+ */
+export async function getUpcomingRides({ userID }) {
   try {
-    const response = await pool.query(query, values);
-    return response.rows;
-  } catch (error) {
-    throw new Error(error.message);
-  }
-}
-
-
-
-
-
-// completed rides (khudki banai ho + dusre ne banai ho)
-export async function getCompletedRides(body) {
-  const { userID } = body;
-
-  const query = `
-    SELECT 
-      r."rideID", 
-      r."createdBy", 
-      r.source, 
-      r.destination, 
-      r.date, 
-      r.time, 
-      r."seatsAvailabel", 
-      r."totalCost", 
-      r."vehicleType",
-      u1.name AS "creatorName",
-      r."rideStatus",
-      STRING_AGG(u2.name, ', ') AS "ridePartnerNames"
-    FROM rides r
-
-    INNER JOIN users u1 
-      ON r."createdBy" = u1."id"
-
-    LEFT JOIN requests req 
-      ON req."rideID" = r."rideID"
-      AND req."requestStatus" = 'Accepted'
-
-    LEFT JOIN users u2 
-      ON req."requestBy" = u2."id"
-
-    WHERE r."rideStatus" = 'Completed'
-      AND (
-        r."createdBy" = $1
-        OR EXISTS (
-          SELECT 1
-          FROM requests req2
-          WHERE req2."rideID" = r."rideID"
-            AND req2."requestBy" = $1
-            AND req2."requestStatus" = 'Accepted'
+    const rows = await prisma.$queryRaw`
+      SELECT
+        r."rideID",
+        r."createdBy",
+        r.source,
+        r.destination,
+        r.date,
+        r.time,
+        r."seatsAvailable",
+        r."totalCost",
+        r."vehicleType",
+        u1.name AS "creatorName",
+        r."rideStatus",
+        STRING_AGG(u2.name, ', ') AS "ridePartnerNames"
+      FROM rides r
+      INNER JOIN users u1 ON r."createdBy" = u1.id
+      LEFT JOIN requests req
+        ON req."rideID" = r."rideID"
+        AND req."requestStatus" = 'Accepted'
+      LEFT JOIN users u2 ON req."requestBy" = u2.id
+      WHERE r."rideStatus" = 'Pending'
+        AND (
+          r."createdBy" = ${userID}
+          OR EXISTS (
+            SELECT 1 FROM requests req2
+            WHERE req2."rideID" = r."rideID"
+              AND req2."requestBy" = ${userID}
+              AND req2."requestStatus" = 'Accepted'
+          )
         )
-      )
-
-    GROUP BY 
-      r."rideID", r."createdBy", r.source, r.destination, r.date, r.time, 
-      r."seatsAvailabel", r."totalCost", r."vehicleType", 
-      r."rideStatus", u1.name
-  `;
-
-  const values = [userID];
-
-  try {
-    const response = await pool.query(query, values);
-    return response.rows;
+      GROUP BY
+        r."rideID", r."createdBy", r.source, r.destination, r.date, r.time,
+        r."seatsAvailable", r."totalCost", r."vehicleType",
+        r."rideStatus", u1.name
+    `;
+    return rows;
   } catch (error) {
+    logger.error(`Error fetching upcoming rides: ${error.message}`);
     throw new Error(error.message);
   }
 }
 
+/**
+ * Get completed rides that the user created or joined.
+ */
+export async function getCompletedRides({ userID }) {
+  try {
+    const rows = await prisma.$queryRaw`
+      SELECT
+        r."rideID",
+        r."createdBy",
+        r.source,
+        r.destination,
+        r.date,
+        r.time,
+        r."seatsAvailable",
+        r."totalCost",
+        r."vehicleType",
+        u1.name AS "creatorName",
+        r."rideStatus",
+        STRING_AGG(u2.name, ', ') AS "ridePartnerNames"
+      FROM rides r
+      INNER JOIN users u1 ON r."createdBy" = u1.id
+      LEFT JOIN requests req
+        ON req."rideID" = r."rideID"
+        AND req."requestStatus" = 'Accepted'
+      LEFT JOIN users u2 ON req."requestBy" = u2.id
+      WHERE r."rideStatus" = 'Completed'
+        AND (
+          r."createdBy" = ${userID}
+          OR EXISTS (
+            SELECT 1 FROM requests req2
+            WHERE req2."rideID" = r."rideID"
+              AND req2."requestBy" = ${userID}
+              AND req2."requestStatus" = 'Accepted'
+          )
+        )
+      GROUP BY
+        r."rideID", r."createdBy", r.source, r.destination, r.date, r.time,
+        r."seatsAvailable", r."totalCost", r."vehicleType",
+        r."rideStatus", u1.name
+    `;
+    return rows;
+  } catch (error) {
+    logger.error(`Error fetching completed rides: ${error.message}`);
+    throw new Error(error.message);
+  }
+}
