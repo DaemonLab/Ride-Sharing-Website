@@ -12,14 +12,11 @@ import { NewRidePayload } from "../types";
  *  1. Manages local form state
  *  2. Calls submitRide() from useRides on form submit
  *  3. Renders JSX based on hook state (loading, error, submitSuccess)
- *
- * Previously handleSubmit did nothing — now it calls the backend via the hook.
  */
 export default function Offer() {
   const navigate = useNavigate();
 
-  // Hook provides the submitRide action and state
-  const { submitRide, loading, error, submitSuccess } = useRides("none");
+  const { submitRide, loading, error } = useRides("none");
 
   const [rideDetails, setRideDetails] = useState<NewRidePayload>({
     from: "",
@@ -41,21 +38,29 @@ export default function Offer() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 mt-8">
-      <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold text-center mb-8">Offer a Ride</h1>
+    <div className="min-h-screen py-28 relative">
+      <div className="absolute w-[26rem] h-[26rem] rounded-full bg-secondary/10 blur-[110px] top-10 -right-24 pointer-events-none" />
+      <div className="absolute w-[22rem] h-[22rem] rounded-full bg-primary/10 blur-[100px] bottom-0 -left-16 pointer-events-none" />
+
+      <div className="container mx-auto px-4 relative z-10">
+        <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2 text-ink">
+          Offer a Ride
+        </h1>
+        <p className="text-center text-ink-variant mb-10">
+          Share your route and let others ride along
+        </p>
 
         <form
           onSubmit={handleSubmit}
-          className="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6"
+          className="max-w-2xl mx-auto glass-strong rounded-md p-6 md:p-8"
         >
           <div className="space-y-4">
-            <div className="flex items-center border rounded-lg p-3">
-              <MapPin className="w-5 h-5 text-gray-400 mr-2" />
+            <div className="glass-input flex items-center rounded-lg px-4 py-3">
+              <MapPin className="w-5 h-5 text-primary mr-3 shrink-0" />
               <input
                 type="text"
                 placeholder="Starting Point"
-                className="w-full focus:outline-none"
+                className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
                 value={rideDetails.from}
                 onChange={(e) =>
                   setRideDetails({ ...rideDetails, from: e.target.value })
@@ -64,12 +69,12 @@ export default function Offer() {
               />
             </div>
 
-            <div className="flex items-center border rounded-lg p-3">
-              <MapPin className="w-5 h-5 text-gray-400 mr-2" />
+            <div className="glass-input flex items-center rounded-lg px-4 py-3">
+              <MapPin className="w-5 h-5 text-primary mr-3 shrink-0" />
               <input
                 type="text"
                 placeholder="Destination"
-                className="w-full focus:outline-none"
+                className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
                 value={rideDetails.to}
                 onChange={(e) =>
                   setRideDetails({ ...rideDetails, to: e.target.value })
@@ -79,11 +84,11 @@ export default function Offer() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center border rounded-lg p-3">
-                <Calendar className="w-5 h-5 text-gray-400 mr-2" />
+              <div className="glass-input flex items-center rounded-lg px-4 py-3">
+                <Calendar className="w-5 h-5 text-primary mr-3 shrink-0" />
                 <input
                   type="date"
-                  className="w-full focus:outline-none"
+                  className="w-full bg-transparent focus:outline-none text-ink-variant"
                   value={rideDetails.date}
                   onChange={(e) =>
                     setRideDetails({ ...rideDetails, date: e.target.value })
@@ -92,11 +97,11 @@ export default function Offer() {
                 />
               </div>
 
-              <div className="flex items-center border rounded-lg p-3">
-                <Clock className="w-5 h-5 text-gray-400 mr-2" />
+              <div className="glass-input flex items-center rounded-lg px-4 py-3">
+                <Clock className="w-5 h-5 text-primary mr-3 shrink-0" />
                 <input
                   type="time"
-                  className="w-full focus:outline-none"
+                  className="w-full bg-transparent focus:outline-none text-ink-variant"
                   value={rideDetails.time}
                   onChange={(e) =>
                     setRideDetails({ ...rideDetails, time: e.target.value })
@@ -107,12 +112,12 @@ export default function Offer() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center border rounded-lg p-3">
-                <Users className="w-5 h-5 text-gray-400 mr-2" />
+              <div className="glass-input flex items-center rounded-lg px-4 py-3">
+                <Users className="w-5 h-5 text-primary mr-3 shrink-0" />
                 <input
                   type="number"
                   placeholder="Available Seats"
-                  className="w-full focus:outline-none"
+                  className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
                   value={rideDetails.seats || ""}
                   onChange={(e) =>
                     setRideDetails({
@@ -125,12 +130,12 @@ export default function Offer() {
                 />
               </div>
 
-              <div className="flex items-center border rounded-lg p-3">
-                <IndianRupee className="w-5 h-5 text-gray-400 mr-2" />
+              <div className="glass-input flex items-center rounded-lg px-4 py-3">
+                <IndianRupee className="w-5 h-5 text-primary mr-3 shrink-0" />
                 <input
                   type="number"
                   placeholder="Total Price"
-                  className="w-full focus:outline-none"
+                  className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
                   value={rideDetails.price || ""}
                   onChange={(e) =>
                     setRideDetails({
@@ -144,10 +149,10 @@ export default function Offer() {
               </div>
             </div>
 
-            <div className="flex items-center border rounded-lg p-3">
-              <Car className="w-5 h-5 text-gray-400 mr-2" />
+            <div className="glass-input flex items-center rounded-lg px-4 py-3">
+              <Car className="w-5 h-5 text-primary mr-3 shrink-0" />
               <select
-                className="w-full focus:outline-none bg-transparent"
+                className="w-full bg-transparent focus:outline-none text-ink"
                 value={rideDetails.vehicle}
                 onChange={(e) =>
                   setRideDetails({ ...rideDetails, vehicle: e.target.value })
@@ -161,12 +166,12 @@ export default function Offer() {
               </select>
             </div>
 
-            <div className="flex items-center border rounded-lg p-3">
-              <Car className="w-5 h-5 text-gray-400 mr-2" />
+            <div className="glass-input flex items-center rounded-lg px-4 py-3">
+              <Car className="w-5 h-5 text-primary mr-3 shrink-0" />
               <input
                 type="text"
                 placeholder="Car Model (e.g. Honda City)"
-                className="w-full focus:outline-none"
+                className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
                 value={rideDetails.vehicle_model}
                 onChange={(e) =>
                   setRideDetails({
@@ -177,9 +182,8 @@ export default function Offer() {
               />
             </div>
 
-            {/* Error message */}
             {error && (
-              <p className="text-red-500 text-sm text-center">{error}</p>
+              <p className="text-danger text-sm text-center">{error}</p>
             )}
 
             <Button className="w-full" size="lg" disabled={loading}>

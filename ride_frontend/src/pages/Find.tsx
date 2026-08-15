@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Search, Calendar, Clock, MapPin } from "lucide-react";
+import { Search, Calendar, Clock, MapPin, Car, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { useRides } from "../hooks/useRides";
@@ -79,22 +79,30 @@ export default function Find() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 mt-8">
-      <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold text-center mb-8">Find a Ride</h1>
+    <div className="min-h-screen py-28 relative">
+      <div className="absolute w-[26rem] h-[26rem] rounded-full bg-primary/10 blur-[110px] top-10 -left-24 pointer-events-none" />
+      <div className="absolute w-[22rem] h-[22rem] rounded-full bg-secondary/10 blur-[100px] bottom-0 -right-16 pointer-events-none" />
+
+      <div className="container mx-auto px-4 relative z-10">
+        <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2 text-ink">
+          Find a Ride
+        </h1>
+        <p className="text-center text-ink-variant mb-10">
+          Search rides posted by fellow students heading your way
+        </p>
 
         {/* Search Form */}
         <form
           onSubmit={handleSearch}
-          className="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6"
+          className="max-w-2xl mx-auto glass-strong rounded-md p-6 md:p-8"
         >
           <div className="space-y-4">
-            <div className="flex items-center border rounded-lg p-3">
-              <MapPin className="w-5 h-5 text-gray-400 mr-2" />
+            <div className="glass-input flex items-center rounded-lg px-4 py-3">
+              <MapPin className="w-5 h-5 text-primary mr-3 shrink-0" />
               <input
                 type="text"
                 placeholder="From"
-                className="w-full focus:outline-none"
+                className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
                 value={filters.from}
                 onChange={(e) =>
                   setFilters({ ...filters, from: e.target.value })
@@ -102,12 +110,12 @@ export default function Find() {
               />
             </div>
 
-            <div className="flex items-center border rounded-lg p-3">
-              <MapPin className="w-5 h-5 text-gray-400 mr-2" />
+            <div className="glass-input flex items-center rounded-lg px-4 py-3">
+              <MapPin className="w-5 h-5 text-primary mr-3 shrink-0" />
               <input
                 type="text"
                 placeholder="To"
-                className="w-full focus:outline-none"
+                className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
                 value={filters.to}
                 onChange={(e) =>
                   setFilters({ ...filters, to: e.target.value })
@@ -116,11 +124,11 @@ export default function Find() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center border rounded-lg p-3">
-                <Calendar className="w-5 h-5 text-gray-400 mr-2" />
+              <div className="glass-input flex items-center rounded-lg px-4 py-3">
+                <Calendar className="w-5 h-5 text-primary mr-3 shrink-0" />
                 <input
                   type="date"
-                  className="w-full focus:outline-none"
+                  className="w-full bg-transparent focus:outline-none text-ink-variant"
                   value={filters.date}
                   onChange={(e) =>
                     setFilters({ ...filters, date: e.target.value })
@@ -128,11 +136,11 @@ export default function Find() {
                 />
               </div>
 
-              <div className="flex items-center border rounded-lg p-3">
-                <Clock className="w-5 h-5 text-gray-400 mr-2" />
+              <div className="glass-input flex items-center rounded-lg px-4 py-3">
+                <Clock className="w-5 h-5 text-primary mr-3 shrink-0" />
                 <input
                   type="time"
-                  className="w-full focus:outline-none"
+                  className="w-full bg-transparent focus:outline-none text-ink-variant"
                   value={filters.time}
                   onChange={(e) =>
                     setFilters({ ...filters, time: e.target.value })
@@ -142,77 +150,75 @@ export default function Find() {
             </div>
 
             <Button type="submit" className="w-full" size="lg">
-              <Search className="w-4 h-4 mr-2 inline" />
+              <Search className="w-4 h-4" />
               Search Rides
             </Button>
           </div>
         </form>
 
         {/* Results Section */}
-        <div className="max-w-4xl mx-auto mt-12">
-          <h2 className="text-2xl font-semibold mb-6">
+        <div className="max-w-4xl mx-auto mt-14">
+          <h2 className="font-display text-xl font-semibold mb-6 text-ink">
             Available Rides ({filteredRides.length})
           </h2>
 
-          {/* Loading state */}
           {loading && (
-            <div className="text-center py-8 text-gray-500">Loading rides...</div>
+            <div className="text-center py-8 text-ink-variant">Loading rides...</div>
           )}
 
-          {/* Error state */}
           {error && !loading && (
-            <div className="text-center py-8 text-red-500">{error}</div>
+            <div className="text-center py-8 text-danger">{error}</div>
           )}
 
-          {/* Ride cards */}
           {!loading && !error && (
             <div className="space-y-4">
               {filteredRides.map((ride, index) => (
                 <div
                   key={ride.id ?? index}
-                  className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+                  className="glass-card rounded-md p-6"
                 >
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
-                      <h3 className="text-lg font-semibold">
-                        {ride.from} → {ride.to}
+                      <h3 className="font-display text-lg font-semibold text-ink flex items-center gap-2">
+                        {ride.from}
+                        <span className="text-primary">→</span>
+                        {ride.to}
                       </h3>
-                      <p className="text-gray-600">
+                      <p className="text-ink-variant text-sm mt-1">
                         {ride.date ? formatDate(ride.date) : ""} • {ride.time}
                       </p>
-                      <p className="text-gray-600">
+                      <p className="text-ink-variant text-sm mt-1 flex items-center gap-1.5">
+                        <Car className="w-4 h-4 text-primary" />
                         {ride.vehicle} • {ride.vehicle_model}
                       </p>
-                      <p className="text-gray-600 mt-2">
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
                         <span
-                          className={`${
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${
                             (ride.seats ?? 0) < 3
-                              ? "text-orange-600"
-                              : "text-green-600"
+                              ? "bg-tertiary/10 text-tertiary-dark border-tertiary/30"
+                              : "bg-secondary/10 text-secondary-dark border-secondary/30"
                           }`}
                         >
+                          <Users className="w-3 h-3" />
                           {ride.seats} seats available
                         </span>
-                      </p>
-                      <p className="text-gray-600 mt-2">
                         <span
-                          className={`${
+                          className={`px-3 py-1 rounded-full text-xs font-medium border ${
                             ride.isBooked === false
-                              ? "text-orange-600"
-                              : "text-blue-600"
+                              ? "bg-tertiary/10 text-tertiary-dark border-tertiary/30"
+                              : "bg-primary/10 text-primary-dark border-primary/30"
                           }`}
                         >
                           {ride.isBooked === false ? "Not PreBooked" : "PreBooked"}
                         </span>
-                      </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-blue-600">
+                    <div className="text-right shrink-0 w-full sm:w-auto flex sm:flex-col items-center sm:items-end justify-between gap-3">
+                      <p className="text-2xl font-display font-bold text-primary">
                         ₹{ride.price}
                       </p>
                       <Button
                         size="sm"
-                        className="mt-2"
                         onClick={() => handleBooking(ride)}
                         disabled={ride.seats === 0}
                       >
@@ -223,7 +229,7 @@ export default function Find() {
                 </div>
               ))}
               {filteredRides.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-10 glass-card rounded-md text-ink-variant">
                   No rides found matching your search criteria
                 </div>
               )}

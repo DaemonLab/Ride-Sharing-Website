@@ -5,7 +5,6 @@ import Find from "./pages/Find";
 import Offer from "./pages/Offer";
 import Profile from "./pages/Profile";
 import SignIn from "./pages/SignIn";
-import SignUp from "./pages/SignUp";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Safety from "./pages/Safety";
@@ -13,10 +12,13 @@ import BookRide from "./pages/BookRide";
 import BookingSuccess from "./pages/BookingSuccess";
 import GroupMembers from "./pages/GroupMembers";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
 import { ParallaxProvider } from "react-scroll-parallax";
 import Chat from "./pages/Chats";
+
+// Note: manual Sign Up was removed — the backend only supports Google OAuth
+// (see ride_backend/src/routes/loginRoutes.js), so /signup now redirects to /signin.
 function App() {
   return (
     <ParallaxProvider>
@@ -24,13 +26,13 @@ function App() {
         {/* AuthProvider is inside Router so it can use useLocation()
             to detect the ?status=success redirect from Google OAuth */}
         <AuthProvider>
-          <div className="min-h-screen flex flex-col">
+          <div className="lumina-bg min-h-screen flex flex-col">
             <Header />
-            <main className="flex-grow">
+            <main className="flex-grow relative z-10">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/signin" element={<SignIn />} />
-                <Route path="/signup" element={<SignUp />} />
+                <Route path="/signup" element={<Navigate to="/signin" replace />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/safety" element={<Safety />} />
