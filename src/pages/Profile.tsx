@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   User,
   Star,
@@ -9,53 +8,48 @@ import {
   Calendar,
   Car,
 } from "lucide-react";
+import { useState } from "react";
 import Button from "../components/Button";
-import { UserProfile } from "../types";
+import { useProfile } from "../hooks/useProfile";
+import { useRides } from "../hooks/useRides";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-
+/**
+ * UI Layer — Profile
+ *
+ * This page ONLY reads from hooks — no fetch(), no API_URL, no inline async logic.
+ *  - useProfile()  → user's name, email, avatar
+ *  - useRides('profile') → upcoming + completed rides
+ */
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("rides");
-  const [isLoading, setIsLoading] = useState(true);
-  const [profile, setProfile] = useState<UserProfile>({
-    studentId: "12345",
-    name: "John Doe",
-    email: "john.doe@example.com",
-  });
 
-  const getProfile = async () => {
-    try {
-      const response = await fetch(`${API_URL}/user/profile`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-      if (!response.ok) {
-        console.error("Failed to fetch profile data");
-        return;
-      }
-      const data = await response.json();
-      setProfile({
-        studentId: data.id,
-        name: data.name,
-        email: data.email,
-        photoUrl: data.picture,
-      });
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Hook for user profile data
+  const { profile, loading: profileLoading, error: profileError } = useProfile();
 
-  useEffect(() => {
-    getProfile();
-  }, []);
+  // Hook for the user's rides history — "profile" mode fetches both lists on mount
+  const {
+    upcomingRides,
+    completedRides,
+    loading: ridesLoading,
+    error: ridesError,
+  } = useRides("profile");
+
+  const isLoading = profileLoading || ridesLoading;
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-red-500">{profileError}</p>
+      </div>
+    );
   }
 
   return (
@@ -69,7 +63,7 @@ export default function Profile() {
               <div className="flex flex-col sm:flex-row items-center -mt-12">
                 <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
                   <div className="w-full h-full bg-gray-200 rounded-full flex items-center justify-center relative group">
-                    {profile.photoUrl ? (
+                    {profile?.photoUrl ? (
                       <img
                         src={profile.photoUrl}
                         alt={profile.name}
@@ -85,9 +79,7 @@ export default function Profile() {
                   </div>
                 </div>
                 <div className="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left">
-                  <h1 className="text-2xl text-white font-bold">
-                    {profile.name}
-                  </h1>
+                  <h1 className="text-2xl font-bold">{profile?.name}</h1>
                   <div className="flex items-center justify-center sm:justify-start mt-2 space-x-4">
                     <div className="flex items-center">
                       <Star className="w-5 h-5 text-yellow-400" />
@@ -95,7 +87,9 @@ export default function Profile() {
                     </div>
                     <div className="flex items-center">
                       <Car className="w-5 h-5 text-gray-400" />
-                      <span className="ml-1">24 rides</span>
+                      <span className="ml-1">
+                        {completedRides.length} rides
+                      </span>
                     </div>
                     <div className="flex items-center">
                       <Calendar className="w-5 h-5 text-gray-400" />
@@ -105,11 +99,10 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Update Contact Information to use profile state */}
               <div className="mt-6 flex flex-wrap gap-4">
                 <div className="flex items-center text-gray-600">
                   <Mail className="w-4 h-4 mr-2" />
-                  <span>{profile.email}</span>
+                  <span>{profile?.email}</span>
                 </div>
               </div>
             </div>
@@ -143,67 +136,87 @@ export default function Profile() {
             </div>
 
             <div className="p-6">
+              {ridesError && (
+                <p className="text-red-500 text-sm mb-4">{ridesError}</p>
+              )}
+
               {activeTab === "rides" ? (
                 <div className="space-y-4">
-                  {[1, 2].map((_, index) => (
-                    <div
-                      key={index}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center text-lg font-medium">
-                            <MapPin className="w-5 h-5 text-blue-500" />
-                            <span className="ml-2">Campus → Downtown</span>
-                          </div>
-                          <div className="mt-2 space-y-1 text-gray-600">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-2" />
-                              <span>March 1, 2024</span>
+                  {upcomingRides.length === 0 ? (
+                    <p className="text-center text-gray-500 py-4">
+                      No upcoming rides
+                    </p>
+                  ) : (
+                    upcomingRides.map((ride, index) => (
+                      <div
+                        key={ride.id ?? index}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center text-lg font-medium">
+                              <MapPin className="w-5 h-5 text-blue-500" />
+                              <span className="ml-2">
+                                {ride.from ?? ride.pickup} → {ride.to ?? ride.dropoff}
+                              </span>
                             </div>
-                            <div className="flex items-center">
-                              <Clock className="w-4 h-4 mr-2" />
-                              <span>2:00 PM</span>
+                            <div className="mt-2 space-y-1 text-gray-600">
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-2" />
+                                <span>{ride.date ?? ride.dateTime}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Clock className="w-4 h-4 mr-2" />
+                                <span>{ride.time}</span>
+                              </div>
                             </div>
                           </div>
+                          <Button variant="secondary" size="sm">
+                            Cancel
+                          </Button>
                         </div>
-                        <Button variant="secondary" size="sm">
-                          Cancel
-                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {[1, 2, 3].map((_, index) => (
-                    <div
-                      key={index}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center text-lg font-medium">
-                            <MapPin className="w-5 h-5 text-blue-500" />
-                            <span className="ml-2">Downtown → Campus</span>
-                          </div>
-                          <div className="mt-2 space-y-1 text-gray-600">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-2" />
-                              <span>February 28, 2024</span>
+                  {completedRides.length === 0 ? (
+                    <p className="text-center text-gray-500 py-4">
+                      No completed rides yet
+                    </p>
+                  ) : (
+                    completedRides.map((ride, index) => (
+                      <div
+                        key={ride.id ?? index}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center text-lg font-medium">
+                              <MapPin className="w-5 h-5 text-blue-500" />
+                              <span className="ml-2">
+                                {ride.from ?? ride.pickup} → {ride.to ?? ride.dropoff}
+                              </span>
                             </div>
-                            <div className="flex items-center">
-                              <Clock className="w-4 h-4 mr-2" />
-                              <span>3:00 PM</span>
+                            <div className="mt-2 space-y-1 text-gray-600">
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-2" />
+                                <span>{ride.date ?? ride.dateTime}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Clock className="w-4 h-4 mr-2" />
+                                <span>{ride.time}</span>
+                              </div>
                             </div>
                           </div>
+                          <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-sm">
+                            Completed
+                          </span>
                         </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-sm">
-                          Completed
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               )}
             </div>

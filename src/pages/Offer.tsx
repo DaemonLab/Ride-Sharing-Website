@@ -2,37 +2,42 @@ import React, { useState } from "react";
 import { MapPin, Calendar, Clock, Users, IndianRupee, Car } from "lucide-react";
 import Button from "../components/Button";
 import { useNavigate } from "react-router-dom";
+import { useRides } from "../hooks/useRides";
+import { NewRidePayload } from "../types";
 
-interface RideDetails {
-  from: string;
-  to: string;
-  date: string;
-  time: string;
-  seats: string;
-  price: string;
-  vehicle: string;
-  vehicle_model: string;
-  booked_seats: string;
-}
-
+/**
+ * UI Layer — Offer
+ *
+ * This page ONLY:
+ *  1. Manages local form state
+ *  2. Calls submitRide() from useRides on form submit
+ *  3. Renders JSX based on hook state (loading, error, submitSuccess)
+ *
+ * Previously handleSubmit did nothing — now it calls the backend via the hook.
+ */
 export default function Offer() {
   const navigate = useNavigate();
-  const [rideDetails, setRideDetails] = useState<RideDetails>({
+
+  // Hook provides the submitRide action and state
+  const { submitRide, loading, error, submitSuccess } = useRides("none");
+
+  const [rideDetails, setRideDetails] = useState<NewRidePayload>({
     from: "",
     to: "",
     date: "",
     time: "",
-    seats: "",
-    price: "",
+    seats: 0,
+    price: 0,
     vehicle: "",
     vehicle_model: "",
-    booked_seats: "0",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Add API call here to save ride details
-    navigate("/find");
+    const success = await submitRide(rideDetails);
+    if (success) {
+      navigate("/find");
+    }
   };
 
   return (
@@ -55,6 +60,7 @@ export default function Offer() {
                 onChange={(e) =>
                   setRideDetails({ ...rideDetails, from: e.target.value })
                 }
+                required
               />
             </div>
 
@@ -68,6 +74,7 @@ export default function Offer() {
                 onChange={(e) =>
                   setRideDetails({ ...rideDetails, to: e.target.value })
                 }
+                required
               />
             </div>
 
@@ -81,6 +88,7 @@ export default function Offer() {
                   onChange={(e) =>
                     setRideDetails({ ...rideDetails, date: e.target.value })
                   }
+                  required
                 />
               </div>
 
@@ -93,6 +101,7 @@ export default function Offer() {
                   onChange={(e) =>
                     setRideDetails({ ...rideDetails, time: e.target.value })
                   }
+                  required
                 />
               </div>
             </div>
@@ -104,10 +113,15 @@ export default function Offer() {
                   type="number"
                   placeholder="Available Seats"
                   className="w-full focus:outline-none"
-                  value={rideDetails.seats}
+                  value={rideDetails.seats || ""}
                   onChange={(e) =>
-                    setRideDetails({ ...rideDetails, seats: e.target.value })
+                    setRideDetails({
+                      ...rideDetails,
+                      seats: parseInt(e.target.value) || 0,
+                    })
                   }
+                  required
+                  min={1}
                 />
               </div>
 
@@ -117,24 +131,28 @@ export default function Offer() {
                   type="number"
                   placeholder="Total Price"
                   className="w-full focus:outline-none"
-                  value={rideDetails.price}
+                  value={rideDetails.price || ""}
                   onChange={(e) =>
-                    setRideDetails({ ...rideDetails, price: e.target.value })
+                    setRideDetails({
+                      ...rideDetails,
+                      price: parseFloat(e.target.value) || 0,
+                    })
                   }
+                  required
+                  min={0}
                 />
               </div>
             </div>
+
             <div className="flex items-center border rounded-lg p-3">
               <Car className="w-5 h-5 text-gray-400 mr-2" />
               <select
                 className="w-full focus:outline-none bg-transparent"
-                value={rideDetails.vehicleType}
+                value={rideDetails.vehicle}
                 onChange={(e) =>
-                  setRideDetails({
-                    ...rideDetails,
-                    vehicleType: e.target.value,
-                  })
+                  setRideDetails({ ...rideDetails, vehicle: e.target.value })
                 }
+                required
               >
                 <option value="">Select Vehicle Type</option>
                 <option value="rickshaw">Rickshaw</option>
@@ -142,21 +160,30 @@ export default function Offer() {
                 <option value="bike">Bike</option>
               </select>
             </div>
+
             <div className="flex items-center border rounded-lg p-3">
               <Car className="w-5 h-5 text-gray-400 mr-2" />
               <input
                 type="text"
-                placeholder="Car Model"
+                placeholder="Car Model (e.g. Honda City)"
                 className="w-full focus:outline-none"
-                value={rideDetails.carModel}
+                value={rideDetails.vehicle_model}
                 onChange={(e) =>
-                  setRideDetails({ ...rideDetails, carModel: e.target.value })
+                  setRideDetails({
+                    ...rideDetails,
+                    vehicle_model: e.target.value,
+                  })
                 }
               />
             </div>
 
-            <Button className="w-full" size="lg">
-              Post Ride
+            {/* Error message */}
+            {error && (
+              <p className="text-red-500 text-sm text-center">{error}</p>
+            )}
+
+            <Button className="w-full" size="lg" disabled={loading}>
+              {loading ? "Posting..." : "Post Ride"}
             </Button>
           </div>
         </form>

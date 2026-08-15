@@ -6,7 +6,7 @@ import { logger } from '../config/logger.js';
 
 config();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Validate environment variables
 function validateEnvVars() {
@@ -38,11 +38,10 @@ const SCOPES = [
 ];
 
 export const loginRedirect = (req, res) => {
+  // If already logged in, send them back to the frontend profile page
+  // instead of dumping raw JSON in the browser.
   if (req.session.user) {
-    return res.status(200).json({
-      message: 'User already authenticated',
-      user: req.session.user
-    });
+    return res.redirect(`${FRONTEND_URL}/profile?status=already_authenticated`);
   }
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',

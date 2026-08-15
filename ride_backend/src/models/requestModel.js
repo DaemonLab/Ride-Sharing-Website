@@ -1,145 +1,111 @@
-import pool from "../config/db.js";
+import { prisma } from "../config/prisma.js";
 
+/**
+ * Send a ride request.
+ * - If an Accepted/Pending request already exists, return its status.
+ * - Otherwise, look up ride details and insert a new Pending request.
+ */
+export async function handleUserSentRequest({ rideID, requestBy }) {
+  try {
+    // Check for an existing request for this ride by this user
+    const existing = await prisma.requests.findFirst({
+      where: { rideID, requestBy },
+    });
 
-// request reject krdi toh dobara request bhej skta h
-export async function handleUserSentRequest(body) {
-    const {
-      rideID,
-      requestBy
-    } = body;
-  
-    let canMakeRequest = false;
-    const queryForReqCheck = `
-    SELECT * 
-    FROM requests
-    WHERE 
-    rideID = $1
-    requestBy = $2
-    `;
-    const valuesForReqCheck = [rideID, requestBy];
+    if (existing) {
+      if (existing.requestStatus === "Accepted") return "Accepted";
+      if (existing.requestStatus === "Pending") return "Pending";
+      // Rejected — allow re-request by deleting the old one first
+      await prisma.requests.delete({ where: { id: existing.id } });
+    }
 
-    const rideDetailsQuery = `
-    SELECT createdBy , rideStatus
-    FROM rides
-    WHERE 
-    rideID = $1
-    `;
-    const valuesForRideDetails = [rideID];
+    // Look up the ride to get createdBy and rideStatus
+    const ride = await prisma.rides.findUnique({
+      where: { rideID },
+      select: { createdBy: true, rideStatus: true },
+    });
 
-    try {
-      const reqCheckResult = await pool.query(queryForReqCheck, valuesForReqCheck);
-  
-      if (reqCheckResult.rows.length == 0) {
-        canMakeRequest = true;
-      } else {
-        const req_status = reqCheckResult.rows[0].req_status;
-  
-        if (req_status === "Accepted") return "Accepted";
-        else if (req_status === "Pending") return "Pending";
-        else canMakeRequest = true;
+    if (!ride) throw new Error(`Ride ${rideID} not found`);
+
+    await prisma.requests.create({
+      data: {
+        rideID,
+        createdBy: ride.createdBy,
+        rideStatus: ride.rideStatus,
+        requestBy,
+        requestStatus: "Pending",
+      },
+    });
+
+    return "RequestMade";
+  } catch (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Accept or Reject a received request.
+ * - Updates requestStatus on the request row.
+ * - If Accepted, decrements seatsAvailable on the ride (in a transaction).
+ */
+export async function handleUserReceivedRequest({ rideID, requestBy, flag }) {
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Update the request status
+      await tx.requests.updateMany({
+        where: { rideID, requestBy },
+        data: { requestStatus: flag },
+      });
+
+      // If accepted, decrement seats
+      if (flag === "Accepted") {
+        await tx.rides.update({
+          where: { rideID },
+          data: { seatsAvailable: { decrement: 1 } },
+        });
       }
-
-      if (canMakeRequest) {
-        const rideDetails = await pool.query(rideDetailsQuery , valuesForRideDetails);
-        const {
-            createdBy,
-            rideStatus
-        } = rideDetails[0];
-
-        const requestEntryQuery = `
-        INSERT INTO requests
-        (rideID, createdBy , rideStatus , requestBy , requestStatus)
-        VALUES 
-        ($1 , $2 , $3 , $4 , $5)`;
-        const requestEntryValues = [rideID, createdBy, rideStatus, requestBy, "Pending"];
-        await pool.query(requestEntryQuery, requestEntryValues);
-        return "RequestMade";
-      }
-    } catch (error) {
-      throw new Error(error.message);
-    }
+    });
+  } catch (error) {
+    throw new Error(error.message);
   }
+}
 
-
-
-// handle request - accept vali upcoming me jyegi and rejected vali udhar hi pdi rhegi
-// - rideID , option(accept or reject) , requestBy
-export async function handleUserReceivedRequest(body) {
-    const {rideID, requestBy, flag} = body;
-  
-    const query = `
-      UPDATE requests
-      SET requestStatus = $1,
-      WHERE 
-      rideID = $2 AND 
-      requestBy = $3
-      `;
-  
-    const values = [flag , rideID, requestBy];
-  
-    try {
-        await pool.query(query, values);
-
-        if (flag === "Accepted") {
-        const queryForUpdation = `
-        UPDATE rides 
-        SET seatsAvailable = seatsAvailable - 1
-        WHERE 
-        rideID = $1
-        `;
-        const valuesForUpdation = [id];
-        await pool.query(queryForUpdation, valuesForUpdation);
-      }
-  
-    } catch (error) {
-      throw new Error(error.message);
-    }
+/**
+ * Get all Pending requests sent by the user (requestBy)
+ * for rides that are still Pending.
+ */
+export async function getSentRequests({ requestBy }) {
+  try {
+    return await prisma.requests.findMany({
+      where: {
+        requestBy,
+        requestStatus: "Pending",
+        ride: { rideStatus: "Pending" },
+      },
+      include: { ride: true },
+    });
+  } catch (error) {
+    throw new Error(error.message);
   }
+}
 
-
-
-  // pending requests jo maine dusre ko maari
-  // requestBy 
-  export async function getSentRequests(body) {
-    const { requestBy } = body;
-    const query = `
-      SELECT *
-      FROM requests req
-      INNER JOIN rides r ON req."rideID" = r."rideID"
-      WHERE rd."requestBy" = $1 
-      AND req."requestStatus" = $2
-      AND r."rideStatus" = $3 
-    `;
-    const values = [requestBy, "Pending", "Pending"];
-    try {
-      const response = await pool.query(query, values);
-      return response.rows;
-    } catch (error) {
-      throw new Error(error.message);
-    }
+/**
+ * Get all Pending requests received on rides created by the user (createdBy).
+ */
+export async function getReceivedRequests({ createdBy }) {
+  try {
+    return await prisma.requests.findMany({
+      where: {
+        createdBy,
+        requestStatus: "Pending",
+        ride: { rideStatus: "Pending" },
+      },
+      include: {
+        ride: true,
+        requester: { select: { id: true, name: true, email: true, picture: true } },
+      },
+    });
+  } catch (error) {
+    throw new Error(error.message);
   }
-
-  // requests(pending or not) jo dusro ne muje maari
-  // createdBy
-  export async function getReceivedRequests(body) {
-    const { createdBy } = body;
-    const query = `
-      SELECT *
-      FROM requests req
-      INNER JOIN rides r ON req."rideID" = r."rideID"
-      WHERE req."createdBy" = $1 
-      AND req."requestStatus" = $2
-      AND r."rideStatus" = $3 
-  `;
-    const values = [createdBy, "Pending", "Pending"];
-    try {
-      const response = await pool.query(query, values);
-      return response.rows;
-    } catch (error) {
-      throw new Error(error.message);
-    }
-  }
-  
-
-
-   
+}

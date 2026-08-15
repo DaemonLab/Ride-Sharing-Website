@@ -19,9 +19,11 @@ import { ParallaxProvider } from "react-scroll-parallax";
 import Chat from "./pages/Chats";
 function App() {
   return (
-    <AuthProvider>
-      <ParallaxProvider>
-        <Router>
+    <ParallaxProvider>
+      <Router>
+        {/* AuthProvider is inside Router so it can use useLocation()
+            to detect the ?status=success redirect from Google OAuth */}
+        <AuthProvider>
           <div className="min-h-screen flex flex-col">
             <Header />
             <main className="flex-grow">
@@ -40,14 +42,14 @@ function App() {
                   <Route path="/booking-success" element={<BookingSuccess />} />
                 </Route>
                 <Route path="/group-members" element={<GroupMembers />} />
-                <Route path="/chat" element={<Chat/>} />
+                <Route path="/chat" element={<Chat />} />
               </Routes>
             </main>
             <Footer />
           </div>
-        </Router>
-      </ParallaxProvider>
-    </AuthProvider>
+        </AuthProvider>
+      </Router>
+    </ParallaxProvider>
   );
 }
 

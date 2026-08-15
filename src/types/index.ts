@@ -1,4 +1,6 @@
-export type RideType = 'rickshaw' | 'cab' | 'bike';
+// ─── Ride Types ─────────────────────────────────────────────────────────────
+
+export type RideType = "rickshaw" | "cab" | "bike";
 
 export interface Ride {
   id: string;
@@ -11,12 +13,50 @@ export interface Ride {
   seatsAvailable: number;
   estimatedCost?: number;
   notes?: string;
+  // Fields returned by the backend for the Find page
+  from?: string;
+  to?: string;
+  date?: string;
+  time?: string;
+  price?: number;
+  seats?: number;
+  vehicle?: string;
+  vehicle_model?: string;
+  isBooked?: boolean;
+}
+
+/** Filters sent to POST /rides/filteredAvailableRides */
+export interface RideFilters {
+  from?: string;
+  to?: string;
+  date?: string;
+  time?: string;
+}
+
+/** Payload for POST /rides/addRide */
+export interface NewRidePayload {
+  from: string;
+  to: string;
+  date: string;
+  time: string;
+  seats: number;
+  price: number;
+  vehicle: string;
+  vehicle_model: string;
+}
+
+// ─── Auth Types ──────────────────────────────────────────────────────────────
+
+export interface AuthStatusResponse {
+  isAuthenticated: boolean;
+  user: User | null;
 }
 
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
+  error: string | null;
   login: () => void;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
@@ -31,9 +71,29 @@ export interface User {
   isAdmin?: boolean;
 }
 
+// ─── User Profile Types ──────────────────────────────────────────────────────
+
 export interface UserProfile {
   studentId: string;
   name: string;
   email: string;
-  photoUrl?: string; // Optional field for profile photo
+  photoUrl?: string;
+}
+
+// ─── Ride Request Types ──────────────────────────────────────────────────────
+
+export type RequestStatus = "pending" | "accepted" | "rejected";
+
+export interface RideRequest {
+  id: string;
+  rideId: string;
+  senderId: string;
+  receiverId: string;
+  status: RequestStatus;
+  createdAt: string;
+}
+
+export interface HandleRequestPayload {
+  requestId: string;
+  action: "accept" | "reject";
 }

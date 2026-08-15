@@ -6,46 +6,25 @@ dotenv.config();
 
 const { Pool } = pkg;
 
+/**
+ * Raw pg Pool — kept ONLY for connect-pg-simple (session store).
+ * All application data queries now go through Prisma (src/config/prisma.js).
+ *
+ * Uses DATABASE_URL (the Neon pooler connection string).
+ */
 const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     require: true,
     rejectUnauthorized: false,
   },
-  max: 5, // Reduce max connections for cloud DB
-  idleTimeoutMillis: 300000, // 5 minutes
-  connectionTimeoutMillis: 10000, // 10 seconds
-  query_timeout: 30000, // 30 seconds
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 0,
-  statement_timeout: 30000, // 30 seconds
+  max: 5,
+  idleTimeoutMillis: 300000,
+  connectionTimeoutMillis: 10000,
 });
 
-pool.on('error', (err) => {
-  logger.error('Unexpected error on idle client', err);
+pool.on("error", (err) => {
+  logger.error("Unexpected error on idle pg client", err);
 });
-
-export const initDb = async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        google_id VARCHAR(255) UNIQUE NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        name VARCHAR(255),
-        picture TEXT,
-        isAdmin BOOLEAN DEFAULT FALSE
-      )
-    `);
-
-    logger.info('Database tables initialized');
-  } catch (err) {
-    logger.error('Error initializing database tables:', err);
-  }
-};
 
 export default pool;
