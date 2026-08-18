@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, MessageCircle, MapPin, Calendar, Clock } from 'lucide-react';
+import { CheckCircle, MapPin, Calendar, Clock } from 'lucide-react';
 import Button from '../components/Button';
 
 interface BookingDetails {
@@ -7,10 +7,8 @@ interface BookingDetails {
   to: string;
   date: string;
   time: string;
-  price: number;
+  price?: number;
   vehicle: string;
-  vehicle_model: string;
-  bookingId: string;
 }
 
 export default function BookingSuccess() {
@@ -18,8 +16,13 @@ export default function BookingSuccess() {
   const location = useLocation();
   const bookingDetails = location.state?.bookingDetails as BookingDetails;
 
-  // Generate a unique booking ID
-  const bookingId = `RD${Date.now().toString().slice(-8)}`;
+  if (!bookingDetails) {
+    return (
+      <div className="min-h-screen py-28 text-center text-ink-variant">
+        No ride request was found. <button className="text-primary underline" onClick={() => navigate('/find')}>Find a ride</button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-28 relative flex items-center">
@@ -33,10 +36,10 @@ export default function BookingSuccess() {
             </div>
 
             <h1 className="font-display text-2xl font-bold mb-3 text-ink">
-              Booking Confirmed!
+              Join Request Sent!
             </h1>
             <p className="text-ink-variant mb-6 text-sm">
-              Your ride has been successfully booked. You can now join the ride group.
+              Your request is pending. You can join the group after the ride owner accepts it.
             </p>
 
             {/* Booking Details */}
@@ -65,10 +68,6 @@ export default function BookingSuccess() {
                     <p className="font-medium text-ink">{bookingDetails.time}</p>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-outline-variant/50">
-                  <p className="text-xs text-ink-variant">Booking Reference</p>
-                  <p className="font-mono font-medium text-ink">{bookingId}</p>
-                </div>
               </div>
             </div>
 
@@ -77,37 +76,15 @@ export default function BookingSuccess() {
                 className="w-full"
                 onClick={() =>
                   navigate('/profile', {
-                    state: { bookingDetails: { ...bookingDetails, bookingId } },
+                    state: { bookingDetails },
                   })
                 }
               >
-                View Booking Details
+                View Pending Requests
               </Button>
 
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() =>
-                  navigate('/group-members', {
-                    state: {
-                      groupDetails: {
-                        ...bookingDetails,
-                        bookingId,
-                        totalSeats: 4,
-                        members: [
-                          {
-                            name: 'You',
-                            joinedAt: new Date().toISOString(),
-                            pickupPoint: bookingDetails.from,
-                          },
-                        ],
-                      },
-                    },
-                  })
-                }
-              >
-                <MessageCircle className="w-5 h-5" />
-                See Group
+              <Button variant="secondary" className="w-full" onClick={() => navigate('/find')}>
+                Find More Rides
               </Button>
             </div>
           </div>

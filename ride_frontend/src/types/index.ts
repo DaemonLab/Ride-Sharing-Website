@@ -21,7 +21,6 @@ export interface Ride {
   price?: number;
   seats?: number;
   vehicle?: string;
-  vehicle_model?: string;
   isBooked?: boolean;
 }
 
@@ -40,9 +39,8 @@ export interface NewRidePayload {
   date: string;
   time: string;
   seats: number;
-  price: number;
+  price?: number;
   vehicle: string;
-  vehicle_model: string;
 }
 
 // ─── Auth Types ──────────────────────────────────────────────────────────────
@@ -82,18 +80,31 @@ export interface UserProfile {
 
 // ─── Ride Request Types ──────────────────────────────────────────────────────
 
-export type RequestStatus = "pending" | "accepted" | "rejected";
+export type RequestStatus = "Pending" | "Accepted" | "Rejected" | "Left";
 
 export interface RideRequest {
-  id: string;
-  rideId: string;
-  senderId: string;
-  receiverId: string;
-  status: RequestStatus;
-  createdAt: string;
+  id: number;
+  rideID: number;
+  createdBy: number;
+  requestBy: number;
+  requestStatus: RequestStatus;
+  ride: {
+    source: string;
+    destination: string;
+    date: string;
+    time: string;
+    seatsAvailable: number;
+  };
+  requester?: {
+    id: number;
+    name: string | null;
+    email: string;
+    picture?: string | null;
+  };
 }
 
 export interface HandleRequestPayload {
-  requestId: string;
-  action: "accept" | "reject";
+  rideID: number;
+  requestBy: number;
+  flag: "Accepted" | "Rejected";
 }

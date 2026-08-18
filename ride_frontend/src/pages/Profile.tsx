@@ -1,7 +1,12 @@
-import { User, Clock, MapPin, Mail, Calendar, Car } from "lucide-react";
+import { User, Clock, MapPin, Mail, Calendar, Car, MessageCircle, Check, X } from "lucide-react";
 import { useState } from "react";
 import { useProfile } from "../hooks/useProfile";
 import { useRides } from "../hooks/useRides";
+import { useAuth } from "../hooks/useAuth";
+import { cancelUserRide, leaveUserRide } from "../services/rideService";
+import { Link } from "react-router-dom";
+import { useRideRequests } from "../hooks/useRideRequests";
+import { HandleRequestPayload, RideRequest } from "../types";
 
 /**
  * UI Layer — Profile
@@ -15,6 +20,15 @@ import { useRides } from "../hooks/useRides";
  */
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("rides");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const {
+    sentRequests,
+    receivedRequests,
+    loading: requestsLoading,
+    error: requestsError,
+    handleRequest,
+  } = useRideRequests();
 
   const { profile, loading: profileLoading, error: profileError } = useProfile();
 
@@ -79,8 +93,65 @@ export default function Profile() {
           </span>
         )}
       </div>
+      {!completed && ride.rideID && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to={`/chat/${ride.rideID}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+            <MessageCircle className="w-3.5 h-3.5" /> Chat
+          </Link>
+          <Link to={`/rides/${ride.rideID}/group`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">View group</Link>
+          {String(ride.createdBy) === String(user?.id) ? (
+            <button className="px-3 py-1.5 rounded-lg bg-danger/10 text-danger text-xs font-medium" onClick={async () => {
+              if (!window.confirm("Cancel this ride?")) return;
+              try { await cancelUserRide(Number(ride.rideID)); window.location.reload(); } catch { setActionError("Unable to cancel ride."); }
+            }}>Cancel ride</button>
+          ) : (
+            <button className="px-3 py-1.5 rounded-lg bg-danger/10 text-danger text-xs font-medium" onClick={async () => {
+              if (!window.confirm("Leave this ride?")) return;
+              try { await leaveUserRide(Number(ride.rideID)); window.location.reload(); } catch { setActionError("Unable to leave ride."); }
+            }}>Leave ride</button>
+          )}
+        </div>
+      )}
     </div>
   );
+
+  const RequestRow = ({ request, received }: { request: RideRequest; received: boolean }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const decide = async (flag: HandleRequestPayload["flag"]) => {
+      setIsSubmitting(true);
+      const success = await handleRequest({ rideID: request.rideID, requestBy: request.requestBy, flag });
+      if (!success) setActionError("Unable to update this ride request.");
+      setIsSubmitting(false);
+    };
+
+    return (
+      <div className="glass rounded-lg p-4">
+        <div className="flex justify-between gap-3 flex-wrap">
+          <div>
+            <p className="font-medium text-ink">{request.ride.source} → {request.ride.destination}</p>
+            <p className="text-sm text-ink-variant mt-1">{request.ride.date} • {request.ride.time}</p>
+            {received ? (
+              <p className="text-sm text-ink-variant mt-2">Requested by: {request.requester?.name ?? request.requester?.email ?? "Student"}</p>
+            ) : (
+              <p className="text-sm text-ink-variant mt-2">Awaiting the ride owner’s decision</p>
+            )}
+          </div>
+          {received ? (
+            <div className="flex gap-2 items-start">
+              <button disabled={isSubmitting} onClick={() => decide("Accepted")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/15 text-secondary-dark text-xs font-medium disabled:opacity-60">
+                <Check className="w-3.5 h-3.5" /> Accept
+              </button>
+              <button disabled={isSubmitting} onClick={() => decide("Rejected")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 text-danger text-xs font-medium disabled:opacity-60">
+                <X className="w-3.5 h-3.5" /> Reject
+              </button>
+            </div>
+          ) : (
+            <span className="px-3 py-1 h-fit rounded-full bg-primary/10 text-primary-dark text-xs font-medium">Pending</span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen py-28 relative">
@@ -151,6 +222,16 @@ export default function Profile() {
                 >
                   Ride History
                 </button>
+                <button
+                  className={`px-6 py-3 text-sm font-medium transition-colors ${
+                    activeTab === "requests"
+                      ? "border-b-2 border-primary text-primary"
+                      : "text-ink-variant hover:text-ink"
+                  }`}
+                  onClick={() => setActiveTab("requests")}
+                >
+                  Requests {receivedRequests.length > 0 && `(${receivedRequests.length})`}
+                </button>
               </div>
             </div>
 
@@ -158,6 +239,7 @@ export default function Profile() {
               {ridesError && (
                 <p className="text-danger text-sm mb-4">{ridesError}</p>
               )}
+              {actionError && <p className="text-danger text-sm mb-4">{actionError}</p>}
 
               {activeTab === "rides" ? (
                 <div className="space-y-3">
@@ -169,7 +251,7 @@ export default function Profile() {
                     ))
                   )}
                 </div>
-              ) : (
+              ) : activeTab === "history" ? (
                 <div className="space-y-3">
                   {completedRides.length === 0 ? (
                     <p className="text-center text-ink-variant py-6">No completed rides yet</p>
@@ -178,6 +260,24 @@ export default function Profile() {
                       <RideRow ride={ride} index={index} completed key={ride.id ?? index} />
                     ))
                   )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {requestsError && <p className="text-danger text-sm">{requestsError}</p>}
+                  {requestsLoading ? <p className="text-ink-variant">Loading requests...</p> : <>
+                    <section>
+                      <h2 className="font-display text-lg font-semibold text-ink mb-3">Requests to join your rides</h2>
+                      {receivedRequests.length === 0 ? <p className="text-ink-variant text-sm">No pending requests for your rides.</p> : (
+                        <div className="space-y-3">{receivedRequests.map((request) => <RequestRow key={request.id} request={request} received />)}</div>
+                      )}
+                    </section>
+                    <section>
+                      <h2 className="font-display text-lg font-semibold text-ink mb-3">Your pending requests</h2>
+                      {sentRequests.length === 0 ? <p className="text-ink-variant text-sm">You have no pending ride requests.</p> : (
+                        <div className="space-y-3">{sentRequests.map((request) => <RequestRow key={request.id} request={request} received={false} />)}</div>
+                      )}
+                    </section>
+                  </>}
                 </div>
               )}
             </div>

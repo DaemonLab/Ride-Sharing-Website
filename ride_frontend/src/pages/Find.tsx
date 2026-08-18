@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { useRides } from "../hooks/useRides";
 import { Ride, RideFilters } from "../types";
+import { useAuth } from "../hooks/useAuth";
 
 /**
  * UI Layer — Find
@@ -24,11 +25,13 @@ export default function Find() {
   });
 
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Hook manages all data fetching — "find" mode auto-fetches on mount
   const { rides, loading, error, fetchRides } = useRides("find");
 
   const handleBooking = (ride: Ride) => {
+    if (String(ride.userId) === String(user?.id) || String((ride as any).createdBy) === String(user?.id)) return;
     navigate("/book-ride", {
       state: {
         rideDetails: ride,
@@ -189,7 +192,7 @@ export default function Find() {
                       </p>
                       <p className="text-ink-variant text-sm mt-1 flex items-center gap-1.5">
                         <Car className="w-4 h-4 text-primary" />
-                        {ride.vehicle} • {ride.vehicle_model}
+                        {ride.vehicle}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 mt-3">
                         <span
@@ -214,15 +217,15 @@ export default function Find() {
                       </div>
                     </div>
                     <div className="text-right shrink-0 w-full sm:w-auto flex sm:flex-col items-center sm:items-end justify-between gap-3">
-                      <p className="text-2xl font-display font-bold text-primary">
-                        ₹{ride.price}
+                      <p className="text-lg font-display font-bold text-primary">
+                        {ride.price == null ? "Price to be decided" : `₹${ride.price}`}
                       </p>
                       <Button
                         size="sm"
                         onClick={() => handleBooking(ride)}
-                        disabled={ride.seats === 0}
+                        disabled={ride.seats === 0 || String(ride.userId) === String(user?.id) || String((ride as any).createdBy) === String(user?.id)}
                       >
-                        {ride.seats === 0 ? "Sold Out" : "Book Now"}
+                        {ride.seats === 0 ? "Sold Out" : (String(ride.userId) === String(user?.id) || String((ride as any).createdBy) === String(user?.id)) ? "Your Ride" : "Book Now"}
                       </Button>
                     </div>
                   </div>

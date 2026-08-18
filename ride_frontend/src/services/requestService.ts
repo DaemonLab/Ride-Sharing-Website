@@ -16,7 +16,11 @@ import { RideRequest, HandleRequestPayload } from "../types";
  * Throws on failure so the hook can set an error state.
  */
 export const sendRideRequest = async (rideId: string): Promise<void> => {
-  await sendRequestApi({ rideId });
+  const rideID = Number(rideId);
+  if (!Number.isInteger(rideID) || rideID <= 0) {
+    throw new Error("Invalid ride ID");
+  }
+  await sendRequestApi({ rideID });
 };
 
 /**

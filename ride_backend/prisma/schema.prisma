@@ -36,7 +36,7 @@ model rides {
   time           String     @db.VarChar(255)
   seatsAvailable Int
   totalSeats     Int?
-  totalCost      Float
+  totalCost      Float?
   vehicleType    String     @db.VarChar(255)
   rideStatus     String     @default("Pending") @db.VarChar(50)
 
@@ -55,6 +55,8 @@ model requests {
 
   ride          rides    @relation(fields: [rideID], references: [rideID], onDelete: Cascade)
   requester     users    @relation("UserRequests", fields: [requestBy], references: [id], onDelete: Cascade)
+
+  @@unique([rideID, requestBy])
 }
 
 model groupChat {

@@ -21,7 +21,8 @@ interface Message {
 }
 
 interface Member {
-  user_id: string;
+  id?: number;
+  user_id?: string;
   name: string;
 }
 
@@ -36,13 +37,13 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
   useEffect(() => {
     if (!rideID) return;
 
-    socket.emit('joinRoom', rideID);
+    socket.emit('joinRoom', { rideId: rideID });
 
     socket.on('ride members', (memberList: Member[]) => {
       setMembers(memberList);
     });
 
-    socket.emit("getOlderMessages", rideID);
+    socket.emit("getOlderMessages", { rideId: rideID });
 
     socket.on("older messages", (fetchedMessages: Message[]) => {
       setMessages(fetchedMessages);
@@ -53,43 +54,10 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
       setMessages(prev => [...prev, msg]);
     });
 
-    // ✅ Inject dummy data in development
-    if (import.meta.env.DEV) {
-      setTimeout(() => {
-        setMembers([
-          { user_id: '12', name: 'jhon doe' },
-          { user_id: '34', name: 'alice@example.com' },
-          { user_id: '56', name: 'bob@example.com' }
-        ]);
-      }, 500);
-
-      setTimeout(() => {
-        setMessages([
-          {
-            rideId: rideID,
-            user_id: '12',
-            name: 'jhon doe',
-            message: 'Hey, what time are we leaving?',
-            timestamp: new Date().toISOString()
-          },
-          {
-            rideId: rideID,
-            user_id: '34',
-            name: 'alice@example.com',
-            message: "Around 4:30 PM works for me!",
-            timestamp: new Date().toISOString()
-          },
-          {
-            rideId: rideID,
-            user_id: '56',
-            name: 'bob@example.com',
-            message: "Perfect, I'll bring snacks 😄",
-            timestamp: new Date().toISOString()
-          }
-        ]);
-        setLoading(false);
-      }, 800);
-    }
+    socket.on('chat error', (message: string) => {
+      setLoading(false);
+      console.error(message);
+    });
 
     return () => {
       socket.off('chat message');
@@ -111,10 +79,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
 
     const messageData = {
       rideId: rideID,
-      user: {
-        id: userID,
-        name: UserName,
-      },
+      user: { id: userID, name: UserName },
       message: trimmed,
     };
 
@@ -146,7 +111,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
             ) : (
               members.map((m) => (
                 <div
-                  key={m.user_id}
+                  key={m.user_id ?? m.id}
                   className="text-sm text-primary-dark px-2 py-1.5 hover:bg-primary/10 rounded-md"
                 >
                   {m.name.split('@')[0]}

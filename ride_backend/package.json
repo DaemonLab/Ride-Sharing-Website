@@ -2,12 +2,15 @@
   "name": "ride_backend",
   "version": "1.0.0",
   "description": "ride_backend",
-  "main": "index.js",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:watch": "npm test -- --watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
     "prisma:pull": "prisma db pull --schema=prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
@@ -33,6 +36,20 @@
     "pg": "^8.14.1",
     "prisma": "^7.9.1",
     "socket.io": "^4.8.1",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.2.0",
+    "@types/nodemailer": "^8.0.1",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12",
+    "tsx": "^4.23.12",
+    "typescript": "5.9.3"
   }
 }

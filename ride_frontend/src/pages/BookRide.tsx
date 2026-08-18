@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MapPin, Calendar, Clock, Car, Users } from 'lucide-react';
 import Button from '../components/Button';
+import { useRideRequests } from '../hooks/useRideRequests';
 
 interface RideDetails {
+  id?: string;
+  rideID?: number;
   from: string;
   to: string;
   date: string;
@@ -11,7 +14,6 @@ interface RideDetails {
   price: number;
   seats: number;
   vehicle: string;
-  vehicle_model: string;
   isBooked: boolean;
 }
 
@@ -19,6 +21,7 @@ export default function BookRide() {
   const navigate = useNavigate();
   const location = useLocation();
   const [paymentMethod] = useState('card');
+  const { sendRequest, loading, error } = useRideRequests();
 
   const rideDetails = location.state?.rideDetails as RideDetails;
 
@@ -36,12 +39,16 @@ export default function BookRide() {
     );
   }
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
+    const rideId = rideDetails.id ?? (rideDetails.rideID ? String(rideDetails.rideID) : '');
+    const sent = await sendRequest(rideId);
+    if (!sent) return;
     navigate('/booking-success', {
       state: {
         bookingDetails: {
           ...rideDetails,
           paymentMethod,
+          requestStatus: 'Pending',
         },
       },
     });
@@ -102,10 +109,6 @@ export default function BookRide() {
               <div>
                 <h3 className="font-medium text-ink capitalize">{rideDetails.vehicle}</h3>
                 <div className="text-sm text-ink-variant space-y-1 mt-2">
-                  <div className="flex items-center gap-1.5">
-                    <Car className="w-4 h-4" />
-                    <span>{rideDetails.vehicle_model}</span>
-                  </div>
                   <p className="flex items-center gap-1.5">
                     <Users className="w-4 h-4" />
                     Available Seats: {rideDetails.seats}
@@ -113,8 +116,8 @@ export default function BookRide() {
                   <p>Status: {rideDetails.isBooked ? 'Pre-booked' : 'Not Pre-booked'}</p>
                 </div>
               </div>
-              <p className="ml-auto text-2xl font-display font-bold text-primary shrink-0">
-                ₹{rideDetails.price}
+              <p className="ml-auto text-lg font-display font-bold text-primary shrink-0">
+                {rideDetails.price == null ? "Price to be decided" : `₹${rideDetails.price}`}
               </p>
             </div>
           </div>
@@ -128,8 +131,9 @@ export default function BookRide() {
             >
               Cancel
             </Button>
-            <Button className="flex-1" onClick={handleBooking}>
-              Confirm Booking
+            {error && <p className="text-danger text-sm text-center">{error}</p>}
+            <Button className="flex-1" onClick={handleBooking} disabled={loading}>
+              {loading ? 'Sending Request...' : 'Request to Join'}
             </Button>
           </div>
         </div>

@@ -4,6 +4,10 @@ import {
   addRide,
   fetchPendingRides,
   fetchCompletedRides,
+  cancelRide,
+  leaveRide,
+  fetchRideGroup,
+  RideGroup,
 } from "../api/rideApi";
 import { Ride, RideFilters, NewRidePayload } from "../types";
 
@@ -70,3 +74,7 @@ export const getUserCompletedRides = async (): Promise<Ride[]> => {
     return [];
   }
 };
+
+export const cancelUserRide = (rideID: number) => cancelRide(rideID);
+export const leaveUserRide = (rideID: number) => leaveRide(rideID);
+export const getRideGroup = (rideID: number): Promise<RideGroup> => fetchRideGroup(rideID);

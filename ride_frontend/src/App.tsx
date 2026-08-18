@@ -43,8 +43,13 @@ function App() {
                   <Route path="/book-ride" element={<BookRide />} />
                   <Route path="/booking-success" element={<BookingSuccess />} />
                 </Route>
-                <Route path="/group-members" element={<GroupMembers />} />
-                <Route path="/chat" element={<Chat />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/rides/:rideID/group" element={<GroupMembers />} />
+                </Route>
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/chat/:rideID" element={<Chat />} />
+                </Route>
               </Routes>
             </main>
             <Footer />

@@ -15,6 +15,7 @@ import { NewRidePayload } from "../types";
  */
 export default function Offer() {
   const navigate = useNavigate();
+  const today = new Date().toISOString().slice(0, 10);
 
   const { submitRide, loading, error } = useRides("none");
 
@@ -24,9 +25,8 @@ export default function Offer() {
     date: "",
     time: "",
     seats: 0,
-    price: 0,
+    price: undefined,
     vehicle: "",
-    vehicle_model: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,6 +88,7 @@ export default function Offer() {
                 <Calendar className="w-5 h-5 text-primary mr-3 shrink-0" />
                 <input
                   type="date"
+                  min={today}
                   className="w-full bg-transparent focus:outline-none text-ink-variant"
                   value={rideDetails.date}
                   onChange={(e) =>
@@ -136,14 +137,13 @@ export default function Offer() {
                   type="number"
                   placeholder="Total Price"
                   className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
-                  value={rideDetails.price || ""}
+                  value={rideDetails.price ?? ""}
                   onChange={(e) =>
                     setRideDetails({
                       ...rideDetails,
                       price: parseFloat(e.target.value) || 0,
                     })
                   }
-                  required
                   min={0}
                 />
               </div>
@@ -166,21 +166,6 @@ export default function Offer() {
               </select>
             </div>
 
-            <div className="glass-input flex items-center rounded-lg px-4 py-3">
-              <Car className="w-5 h-5 text-primary mr-3 shrink-0" />
-              <input
-                type="text"
-                placeholder="Car Model (e.g. Honda City)"
-                className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60"
-                value={rideDetails.vehicle_model}
-                onChange={(e) =>
-                  setRideDetails({
-                    ...rideDetails,
-                    vehicle_model: e.target.value,
-                  })
-                }
-              />
-            </div>
 
             {error && (
               <p className="text-danger text-sm text-center">{error}</p>
