@@ -7,6 +7,7 @@ import { cancelUserRide, leaveUserRide } from "../services/rideService";
 import { Link } from "react-router-dom";
 import { useRideRequests } from "../hooks/useRideRequests";
 import { HandleRequestPayload, RideRequest } from "../types";
+import ConfirmModal from "../components/ConfirmModal";
 
 /**
  * UI Layer — Profile
@@ -14,14 +15,30 @@ import { HandleRequestPayload, RideRequest } from "../types";
  * This page ONLY reads from hooks — no fetch(), no API_URL, no inline async logic.
  *  - useProfile()  → user's name, email, avatar (GET /user/profile)
  *  - useRides('profile') → upcoming + completed rides
- *
- * Note: the backend has no "cancel ride", "edit avatar" or "rating" endpoints,
- * so those UI affordances were removed rather than left as non-functional decoration.
+ *  - ConfirmModal  → sleek confirmation for ride cancellation/leave with in-place refresh
  */
 export default function Profile() {
   const [activeTab, setActiveTab] = useState("rides");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const { user } = useAuth();
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    isDanger: boolean;
+    onConfirm: () => Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    confirmText: "Confirm",
+    isDanger: true,
+    onConfirm: async () => {},
+  });
+
   const {
     sentRequests,
     receivedRequests,
@@ -37,9 +54,52 @@ export default function Profile() {
     completedRides,
     loading: ridesLoading,
     error: ridesError,
+    fetchProfileRides,
   } = useRides("profile");
 
   const isLoading = profileLoading || ridesLoading;
+
+  const handleCancelRideClick = (rideID: number) => {
+    setActionError(null);
+    setActionSuccess(null);
+    setConfirmModal({
+      isOpen: true,
+      title: "Cancel Ride",
+      description: "Are you sure you want to cancel this ride? All accepted and pending requests will be canceled and your co-riders notified.",
+      confirmText: "Yes, Cancel Ride",
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await cancelUserRide(rideID);
+          await fetchProfileRides();
+          setActionSuccess("Ride canceled successfully.");
+        } catch {
+          setActionError("Unable to cancel ride. Please try again.");
+        }
+      },
+    });
+  };
+
+  const handleLeaveRideClick = (rideID: number) => {
+    setActionError(null);
+    setActionSuccess(null);
+    setConfirmModal({
+      isOpen: true,
+      title: "Leave Ride",
+      description: "Are you sure you want to leave this ride? Your seat will be freed up for other students.",
+      confirmText: "Yes, Leave Ride",
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await leaveUserRide(rideID);
+          await fetchProfileRides();
+          setActionSuccess("You have left the ride successfully.");
+        } catch {
+          setActionError("Unable to leave ride. Please try again.");
+        }
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -81,8 +141,15 @@ export default function Profile() {
                 <span>{ride.time}</span>
               </div>
             )}
+            {ride.vehicle && (
+              <div className="flex items-center capitalize">
+                <Car className="w-4 h-4 mr-2" />
+                <span>{ride.vehicle}</span>
+              </div>
+            )}
           </div>
         </div>
+
         {completed ? (
           <span className="px-3 py-1 bg-secondary/10 text-secondary-dark border border-secondary/30 rounded-full text-xs font-medium">
             Completed
@@ -93,22 +160,37 @@ export default function Profile() {
           </span>
         )}
       </div>
+
       {!completed && ride.rideID && (
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link to={`/chat/${ride.rideID}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+          <Link
+            to={`/chat/${ride.rideID}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors"
+          >
             <MessageCircle className="w-3.5 h-3.5" /> Chat
           </Link>
-          <Link to={`/rides/${ride.rideID}/group`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">View group</Link>
+          <Link
+            to={`/rides/${ride.rideID}/group`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors"
+          >
+            View group
+          </Link>
           {String(ride.createdBy) === String(user?.id) ? (
-            <button className="px-3 py-1.5 rounded-lg bg-danger/10 text-danger text-xs font-medium" onClick={async () => {
-              if (!window.confirm("Cancel this ride?")) return;
-              try { await cancelUserRide(Number(ride.rideID)); window.location.reload(); } catch { setActionError("Unable to cancel ride."); }
-            }}>Cancel ride</button>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 text-danger text-xs font-medium transition-colors"
+              onClick={() => handleCancelRideClick(Number(ride.rideID))}
+            >
+              Cancel ride
+            </button>
           ) : (
-            <button className="px-3 py-1.5 rounded-lg bg-danger/10 text-danger text-xs font-medium" onClick={async () => {
-              if (!window.confirm("Leave this ride?")) return;
-              try { await leaveUserRide(Number(ride.rideID)); window.location.reload(); } catch { setActionError("Unable to leave ride."); }
-            }}>Leave ride</button>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 text-danger text-xs font-medium transition-colors"
+              onClick={() => handleLeaveRideClick(Number(ride.rideID))}
+            >
+              Leave ride
+            </button>
           )}
         </div>
       )}
@@ -138,15 +220,27 @@ export default function Profile() {
           </div>
           {received ? (
             <div className="flex gap-2 items-start">
-              <button disabled={isSubmitting} onClick={() => decide("Accepted")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/15 text-secondary-dark text-xs font-medium disabled:opacity-60">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => decide("Accepted")}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
+              >
                 <Check className="w-3.5 h-3.5" /> Accept
               </button>
-              <button disabled={isSubmitting} onClick={() => decide("Rejected")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 text-danger text-xs font-medium disabled:opacity-60">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => decide("Rejected")}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-danger/10 text-danger text-xs font-medium hover:bg-danger/20 transition-colors disabled:opacity-50"
+              >
                 <X className="w-3.5 h-3.5" /> Reject
               </button>
             </div>
           ) : (
-            <span className="px-3 py-1 h-fit rounded-full bg-primary/10 text-primary-dark text-xs font-medium">Pending</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-ink/5 text-ink-variant font-medium self-start">
+              Pending
+            </span>
           )}
         </div>
       </div>
@@ -155,91 +249,94 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen py-28 relative">
-      <div className="absolute w-[24rem] h-[24rem] rounded-full bg-primary/10 blur-[110px] top-10 -right-20 pointer-events-none" />
+      <div className="absolute w-[26rem] h-[26rem] rounded-full bg-primary/10 blur-[110px] top-10 -left-24 pointer-events-none" />
+      <div className="absolute w-[22rem] h-[22rem] rounded-full bg-secondary/10 blur-[100px] bottom-0 -right-16 pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-3xl mx-auto">
-          {/* Profile Header */}
-          <div className="glass-strong rounded-md overflow-hidden">
-            <div className="h-24 bg-gradient-to-r from-primary to-secondary" />
-            <div className="px-6 pb-6">
-              <div className="flex flex-col sm:flex-row items-center -mt-12">
-                <div className="w-24 h-24 bg-white rounded-full p-1 shadow-glass-lg">
-                  <div className="w-full h-full bg-surface-container rounded-full flex items-center justify-center overflow-hidden">
-                    {profile?.photoUrl ? (
-                      <img
-                        src={profile.photoUrl}
-                        alt={profile.name}
-                        className="w-full h-full rounded-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <User className="w-10 h-10 text-ink-variant" />
-                    )}
-                  </div>
-                </div>
-                <div className="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left">
-                  <h1 className="font-display text-2xl font-bold text-ink">{profile?.name}</h1>
-                  <div className="flex items-center justify-center sm:justify-start mt-2 gap-4 text-sm text-ink-variant">
-                    <div className="flex items-center">
-                      <Car className="w-4 h-4 mr-1.5" />
-                      <span>{completedRides.length} rides completed</span>
-                    </div>
-                  </div>
-                </div>
+        <div className="max-w-4xl mx-auto">
+          {/* Profile Card */}
+          <div className="glass-strong rounded-2xl p-6 md:p-8 mb-8">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+              <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden shrink-0 shadow-sm">
+                {profile?.photoUrl? (
+                  <img
+                    src={profile.photoUrl}
+                    alt={profile.name ?? "Profile"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-12 h-12 text-primary" />
+                )}
               </div>
+              
 
-              <div className="mt-6 flex flex-wrap gap-4">
-                <div className="flex items-center text-sm text-ink-variant">
-                  <Mail className="w-4 h-4 mr-2" />
-                  <span>{profile?.email}</span>
+              <div className="flex-1 text-center md:text-left space-y-2">
+                <h1 className="font-display text-2xl md:text-3xl font-bold text-ink">
+                  {profile?.name ?? "Student"}
+                </h1>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-ink-variant">
+                  <div className="flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 text-primary" />
+                    <span>{profile?.email}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="mt-6 glass-strong rounded-md">
-            <div className="border-b border-white/60">
-              <div className="flex">
-                <button
-                  className={`px-6 py-3 text-sm font-medium transition-colors ${
-                    activeTab === "rides"
-                      ? "border-b-2 border-primary text-primary"
-                      : "text-ink-variant hover:text-ink"
-                  }`}
-                  onClick={() => setActiveTab("rides")}
-                >
-                  Upcoming Rides
-                </button>
-                <button
-                  className={`px-6 py-3 text-sm font-medium transition-colors ${
-                    activeTab === "history"
-                      ? "border-b-2 border-primary text-primary"
-                      : "text-ink-variant hover:text-ink"
-                  }`}
-                  onClick={() => setActiveTab("history")}
-                >
-                  Ride History
-                </button>
-                <button
-                  className={`px-6 py-3 text-sm font-medium transition-colors ${
-                    activeTab === "requests"
-                      ? "border-b-2 border-primary text-primary"
-                      : "text-ink-variant hover:text-ink"
-                  }`}
-                  onClick={() => setActiveTab("requests")}
-                >
-                  Requests {receivedRequests.length > 0 && `(${receivedRequests.length})`}
-                </button>
-              </div>
+          {/* Activity / Rides Tabs */}
+          <div className="glass-strong rounded-2xl p-6 md:p-8">
+            <div className="flex border-b border-ink/10 mb-6 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab("rides")}
+                className={`pb-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors relative ${
+                  activeTab === "rides"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-ink-variant hover:text-ink"
+                }`}
+              >
+                My Rides ({upcomingRides.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("history")}
+                className={`pb-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors relative ${
+                  activeTab === "history"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-ink-variant hover:text-ink"
+                }`}
+              >
+                Ride History ({completedRides.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("requests")}
+                className={`pb-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors relative ${
+                  activeTab === "requests"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-ink-variant hover:text-ink"
+                }`}
+              >
+                Requests ({receivedRequests.length + sentRequests.length})
+              </button>
             </div>
 
-            <div className="p-6">
+            {/* Content Area */}
+            <div>
               {ridesError && (
                 <p className="text-danger text-sm mb-4">{ridesError}</p>
               )}
-              {actionError && <p className="text-danger text-sm mb-4">{actionError}</p>}
+              {actionError && (
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm mb-4">
+                  {actionError}
+                </div>
+              )}
+              {actionSuccess && (
+                <div className="p-3 rounded-lg bg-secondary/10 border border-secondary/30 text-secondary-dark text-sm mb-4">
+                  {actionSuccess}
+                </div>
+              )}
 
               {activeTab === "rides" ? (
                 <div className="space-y-3">
@@ -284,6 +381,17 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        confirmText={confirmModal.confirmText}
+        isDanger={confirmModal.isDanger}
+      />
     </div>
   );
 }
