@@ -1,26 +1,12 @@
 import { prisma } from "../config/prisma.js";
 import { logger } from "../config/logger.js";
 
-export class RequestError extends Error {
-  readonly statusCode: number;
-
-  constructor(message: string, statusCode = 400) {
-    super(message);
-    this.statusCode = statusCode;
-    this.name = "RequestError";
-  }
-}
-
-export interface SentRequestParams {
-  rideID: number;
-  requestBy: number;
-}
-
-export interface ReceivedRequestParams {
-  rideID: number;
-  requestBy: number;
-  flag: "Accepted" | "Rejected";
-  ownerID: number;
+// Small helper to create an error with a statusCode attached.
+// errorHandler in errorMiddleware.ts reads (error as any).statusCode to set the HTTP status.
+function createError(message: string, statusCode = 400) {
+  const error = new Error(message);
+  (error as any).statusCode = statusCode;
+  return error;
 }
 
 /**
@@ -32,7 +18,7 @@ export interface ReceivedRequestParams {
  * Wrapped in a $transaction to prevent a race condition where two concurrent
  * requests could both pass the seat-availability check before either is committed.
  */
-export async function handleUserSentRequest({ rideID, requestBy }: SentRequestParams): Promise<string> {
+export async function handleUserSentRequest({ rideID, requestBy }: { rideID: number; requestBy: number }) {
   return prisma.$transaction(async (tx) => {
     // Check for an existing request for this ride by this user
     const existing = await tx.requests.findFirst({ where: { rideID, requestBy } });
@@ -50,10 +36,10 @@ export async function handleUserSentRequest({ rideID, requestBy }: SentRequestPa
       select: { createdBy: true, rideStatus: true, seatsAvailable: true },
     });
 
-    if (!ride) throw new RequestError(`Ride ${rideID} not found`, 404);
-    if (ride.createdBy === requestBy) throw new RequestError("You cannot join your own ride");
-    if (ride.rideStatus !== "Pending") throw new RequestError("This ride is no longer accepting requests");
-    if (ride.seatsAvailable <= 0) throw new RequestError("This ride has no available seats");
+    if (!ride) throw createError(`Ride ${rideID} not found`, 404);
+    if (ride.createdBy === requestBy) throw createError("You cannot join your own ride");
+    if (ride.rideStatus !== "Pending") throw createError("This ride is no longer accepting requests");
+    if (ride.seatsAvailable <= 0) throw createError("This ride has no available seats");
 
     await tx.requests.create({
       data: {
@@ -77,25 +63,22 @@ export async function handleUserSentRequest({ rideID, requestBy }: SentRequestPa
  * Note: flag validation is done at the controller boundary before reaching here.
  */
 export async function handleUserReceivedRequest({
-  rideID,
-  requestBy,
-  flag,
-  ownerID,
-}: ReceivedRequestParams): Promise<void> {
+  rideID, requestBy, flag, ownerID,
+}: { rideID: number; requestBy: number; flag: "Accepted" | "Rejected"; ownerID: number }) {
   await prisma.$transaction(async (tx) => {
     const ride = await tx.rides.findUnique({ where: { rideID }, select: { createdBy: true } });
-    if (!ride) throw new RequestError(`Ride ${rideID} not found`, 404);
-    if (ride.createdBy !== ownerID) throw new RequestError("Only the ride owner can handle requests", 403);
+    if (!ride) throw createError(`Ride ${rideID} not found`, 404);
+    if (ride.createdBy !== ownerID) throw createError("Only the ride owner can handle requests", 403);
 
     const request = await tx.requests.findFirst({ where: { rideID, requestBy, requestStatus: "Pending" } });
-    if (!request) throw new RequestError("Pending request not found", 404);
+    if (!request) throw createError("Pending request not found", 404);
 
     if (flag === "Accepted") {
       const seatUpdate = await tx.rides.updateMany({
         where: { rideID, seatsAvailable: { gt: 0 }, rideStatus: "Pending" },
         data: { seatsAvailable: { decrement: 1 } },
       });
-      if (seatUpdate.count !== 1) throw new RequestError("This ride has no available seats");
+      if (seatUpdate.count !== 1) throw createError("This ride has no available seats");
     }
 
     await tx.requests.update({ where: { id: request.id }, data: { requestStatus: flag } });
@@ -133,3 +116,5 @@ export async function getReceivedRequests({ createdBy }: { createdBy: number }) 
     },
   });
 }
+
+

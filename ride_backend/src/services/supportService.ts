@@ -1,22 +1,11 @@
 import nodemailer from "nodemailer";
-import { getEnvironment } from "../config/env.js";
+import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 
-export interface ContactFormPayload {
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-}
-
 function createTransporter() {
-  const env = getEnvironment();
   return nodemailer.createTransport({
     service: "gmail",
-    auth: {
-      user: env.emailSender,
-      pass: env.emailPassword,
-    },
+    auth: { user: env.emailSender, pass: env.emailPassword },
   });
 }
 
@@ -47,8 +36,9 @@ function createAutoReplyEmail(name: string): { subject: string; html: string } {
 /**
  * Sends both the notification email to support and the auto-reply to the user.
  */
-export async function sendContactEmail({ name, email, subject, message }: ContactFormPayload): Promise<void> {
-  const env = getEnvironment();
+export async function sendContactEmail({ name, email, subject, message }: {
+  name: string; email: string; subject: string; message: string;
+}) {
   const transporter = createTransporter();
   const autoReply = createAutoReplyEmail(name);
 

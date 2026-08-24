@@ -1,39 +1,17 @@
 import winston from "winston";
-import { getEnvironment } from "./env.js";
 
-const fileFormat = winston.format.combine(
-  winston.format.timestamp(),
-  winston.format.json(),
-);
-
-const consoleFormat = winston.format.combine(
+// colorize + simple makes logs readable in the terminal: "info: Server running on..."
+const fmt = winston.format.combine(
   winston.format.colorize(),
   winston.format.simple(),
 );
 
-export const logger: winston.Logger = winston.createLogger({
+export const logger = winston.createLogger({
   level: "info",
   transports: [
-    new winston.transports.File({
-      filename: "logs/error.log",
-      level: "error",
-      format: fileFormat,
-    }),
-    new winston.transports.File({
-      filename: "logs/combined.log",
-      format: fileFormat,
-    }),
-  ],
-  exceptionHandlers: [
-    new winston.transports.Console({ format: consoleFormat }),
-    new winston.transports.File({
-      filename: "logs/exceptions.log",
-      format: fileFormat,
-    }),
+    new winston.transports.Console({ format: fmt }),
+    new winston.transports.File({ filename: "logs/error.log", level: "error" }),
+    new winston.transports.File({ filename: "logs/combined.log" }),
   ],
 });
 
-// In non-production environments also log to the console with colorized output.
-if (getEnvironment().nodeEnv !== "production") {
-  logger.add(new winston.transports.Console({ format: consoleFormat }));
-}

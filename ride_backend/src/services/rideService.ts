@@ -1,27 +1,12 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma.js";
 import { logger } from "../config/logger.js";
 
-export class RideLifecycleError extends Error {
-  readonly statusCode: number;
-
-  constructor(message: string, statusCode = 400) {
-    super(message);
-    this.statusCode = statusCode;
-    this.name = "RideLifecycleError";
-  }
-}
-
-export interface NewRideData {
-  /** User's internal DB id — taken from session, never from request body */
-  userID: number;
-  source: string;
-  destination: string;
-  date: string;
-  time: string;
-  vehicleType: string;
-  seatsAvailable: number;
-  totalCost?: number | null;
+// Small helper — attaches a statusCode to a plain Error so errorHandler
+// can send the right HTTP status. Replaces the old RideLifecycleError class.
+function createError(message: string, statusCode = 400) {
+  const error = new Error(message);
+  (error as any).statusCode = statusCode;
+  return error;
 }
 
 export async function getRideGroup({ rideID, userID }: { rideID: number; userID: number }) {
@@ -35,11 +20,11 @@ export async function getRideGroup({ rideID, userID }: { rideID: number; userID:
       },
     },
   });
-  if (!ride) throw new RideLifecycleError("Ride not found", 404);
+  if (!ride) throw createError("Ride not found", 404);
 
   const isAcceptedMember = ride.requests.some((r) => r.requestBy === userID);
   if (ride.createdBy !== userID && !isAcceptedMember) {
-    throw new RideLifecycleError("Only ride members can view this group", 403);
+    throw createError("Only ride members can view this group", 403);
   }
 
   return {
@@ -60,9 +45,9 @@ export async function getRideGroup({ rideID, userID }: { rideID: number; userID:
 export async function cancelRide({ rideID, ownerID }: { rideID: number; ownerID: number }) {
   return prisma.$transaction(async (tx) => {
     const ride = await tx.rides.findUnique({ where: { rideID } });
-    if (!ride) throw new RideLifecycleError("Ride not found", 404);
-    if (ride.createdBy !== ownerID) throw new RideLifecycleError("Only the ride owner can cancel this ride", 403);
-    if (ride.rideStatus !== "Pending") throw new RideLifecycleError("Only pending rides can be cancelled");
+    if (!ride) throw createError("Ride not found", 404);
+    if (ride.createdBy !== ownerID) throw createError("Only the ride owner can cancel this ride", 403);
+    if (ride.rideStatus !== "Pending") throw createError("Only pending rides can be cancelled");
 
     // Single update — Prisma throws P2025 if not found, so no count check needed.
     await tx.rides.update({
@@ -84,14 +69,14 @@ export async function leaveRide({ rideID, userID }: { rideID: number; userID: nu
       where: { rideID },
       select: { createdBy: true, rideStatus: true },
     });
-    if (!ride) throw new RideLifecycleError("Ride not found", 404);
-    if (ride.createdBy === userID) throw new RideLifecycleError("The ride owner must cancel the ride instead");
-    if (ride.rideStatus !== "Pending") throw new RideLifecycleError("Only pending rides can be left");
+    if (!ride) throw createError("Ride not found", 404);
+    if (ride.createdBy === userID) throw createError("The ride owner must cancel the ride instead");
+    if (ride.rideStatus !== "Pending") throw createError("Only pending rides can be left");
 
     const request = await tx.requests.findFirst({
       where: { rideID, requestBy: userID, requestStatus: "Accepted" },
     });
-    if (!request) throw new RideLifecycleError("You are not an accepted member of this ride", 404);
+    if (!request) throw createError("You are not an accepted member of this ride", 404);
 
     await tx.requests.update({ where: { id: request.id }, data: { requestStatus: "Left" } });
     await tx.rides.update({ where: { rideID }, data: { seatsAvailable: { increment: 1 } } });
@@ -162,7 +147,7 @@ export async function getFilteredPendingRides({
   time: string;
 }) {
   try {
-    const where: Prisma.ridesWhereInput = {
+    const where: any = {
       rideStatus: "Pending",
       seatsAvailable: { gt: 0 },
     };
@@ -190,7 +175,11 @@ export async function getFilteredPendingRides({
  * Add a newly created ride.
  * Uses userID directly from session — no redundant email lookup.
  */
-export async function addNewlyCreatedRide(data: NewRideData): Promise<void> {
+export async function addNewlyCreatedRide(data: {
+  userID: number; source: string; destination: string;
+  date: string; time: string; vehicleType: string;
+  seatsAvailable: number; totalCost?: number | null;
+}) {
   try {
     await prisma.rides.create({
       data: {
@@ -297,3 +286,4 @@ export async function getCompletedRides({ userID }: { userID: number }) {
     throw new Error(err.message);
   }
 }
+

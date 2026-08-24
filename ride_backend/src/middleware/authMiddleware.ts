@@ -1,10 +1,8 @@
-import type { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 
-/**
- * Route guard — rejects unauthenticated requests with 401.
- * session.user is typed via src/types/express-session.d.ts.
- */
-export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
+// Rejects unauthenticated requests with 401.
+// req.session.user is set by loginController after successful Google OAuth.
+export const authenticate = (req: Request, res: Response, next: NextFunction) => {
   if (req.session?.user) {
     next();
   } else {
@@ -12,13 +10,12 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   }
 };
 
-/**
- * Admin-only route guard — rejects non-admin users with 403.
- */
-export const isAdmin = (req: Request, res: Response, next: NextFunction): void => {
+// Rejects non-admin users with 403.
+export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (req.session?.user?.isAdmin === true) {
     next();
   } else {
     res.status(403).json({ message: "Forbidden: Admins only" });
   }
 };
+

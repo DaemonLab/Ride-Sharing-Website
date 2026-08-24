@@ -1,8 +1,8 @@
-import { parseBody, rideCreateSchema, rideFilterSchema } from "../src/validation/rideSchemas.js";
+import { rideCreateSchema, rideFilterSchema } from "../src/validation/rideSchemas.js";
 
 describe("Zod API schemas", () => {
   test("normalizes a valid create payload", () => {
-    const value = parseBody(rideCreateSchema, {
+    const value = rideCreateSchema.parse({
       from: " Campus ",
       to: "Airport",
       date: "2099-08-25",
@@ -15,12 +15,12 @@ describe("Zod API schemas", () => {
     expect(value).toMatchObject({ from: "Campus", seats: 2, price: 250, vehicle: "cab" });
   });
 
-  test("returns a client error for malformed input", () => {
-    expect(() => parseBody(rideCreateSchema, { from: "", seats: 0 })).toThrow("from");
+  test("returns a validation error for malformed input", () => {
+    expect(() => rideCreateSchema.parse({ from: "", seats: 0 })).toThrow();
   });
 
   test("accepts partial filters", () => {
-    expect(parseBody(rideFilterSchema, { source: " campus " })).toEqual({
+    expect(rideFilterSchema.parse({ source: " campus " })).toEqual({
       source: "campus",
       destination: "",
       date: "",
@@ -28,3 +28,4 @@ describe("Zod API schemas", () => {
     });
   });
 });
+

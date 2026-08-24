@@ -1,90 +1,75 @@
-import express, { type Express } from "express";
+import express from "express";
 import session from "express-session";
-import connectPg from "connect-pg-simple";
-import pool from "./config/db.js";
 import cors from "cors";
+import { env } from "./config/env.js";
+import { PrismaStore } from "./config/prismaStore.js";
 import apiRoutes from "./routes/index.js";
 import loginRoutes from "./routes/loginRoutes.js";
 import { authenticate } from "./middleware/authMiddleware.js";
-import { getEnvironment } from "./config/env.js";
-import { AppError, errorHandler, notFoundHandler } from "./middleware/errorMiddleware.js";
-import type { RequestHandler } from "express";
+import { errorHandler } from "./middleware/errorMiddleware.js";
 
-const PgSession = connectPg(session);
-
-function corsOptions(frontendOrigins: string[]) {
-  return {
-    origin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-      // Requests without an Origin header are server-to-server/health requests.
-      if (!origin || frontendOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new AppError(403, "Origin is not allowed by CORS"));
-    },
-    credentials: true,
-  };
-}
-
-/**
- * Build the Express application after runtime configuration has been validated.
- * Keeping app creation separate from server startup makes HTTP tests easier.
- */
-export function createApp(): Express {
-  const env = getEnvironment();
-  const app = express();
-
-  if (env.cookieSecure) {
-    // Required for secure cookies behind a reverse proxy such as Render or Railway.
-    app.set("trust proxy", 1);
+// Extend the express-session types so TypeScript knows about req.session.user
+declare module "express-session" {
+  interface SessionData {
+    user: {
+      id: number;
+      googleId: string;
+      email: string;
+      name: string | null;
+      picture: string | null;
+      isAdmin: boolean | null;
+    };
+    refreshToken?: string;
   }
-
-  app.use(cors(corsOptions(env.frontendOrigins)));
-  app.use(express.json({ limit: "100kb" }));
-  app.use(express.urlencoded({ extended: true, limit: "100kb" }));
-
-  const sessionMiddleware: RequestHandler = session({
-    name: "rideshare.sid",
-    rolling: true,
-    cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure: env.cookieSecure,
-      httpOnly: true,
-      sameSite: env.cookieSameSite,
-    },
-    store: new PgSession({
-      pool,
-      tableName: "session",
-      ttl: 7 * 24 * 60 * 60,
-      createTableIfMissing: true,
-    }),
-    secret: env.sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-  });
-  app.use(sessionMiddleware);
-
-  // Expose the session middleware so Socket.IO can reuse it for auth.
-  app.locals.sessionMiddleware = sessionMiddleware;
-
-  app.get("/health", (_req, res) => {
-    res.status(200).json({ status: "OK" });
-  });
-
-  app.get("/ready", async (_req, res, next) => {
-    try {
-      await pool.query("SELECT 1");
-      res.status(200).json({ status: "READY" });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.use("/auth", loginRoutes);
-  app.use(authenticate);
-  app.use(apiRoutes);
-
-  app.use(notFoundHandler);
-  app.use(errorHandler);
-
-  return app;
 }
+
+const app = express();
+
+// Trust the first reverse proxy (needed for secure cookies on Render/Railway)
+if (env.cookieSecure) app.set("trust proxy", 1);
+
+// Allow requests from the frontend origin with cookies
+app.use(cors({ origin: env.frontendUrl, credentials: true }));
+
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
+
+// Session middleware — stores session data in the "session" table via Prisma
+const sessionMiddleware = session({
+  name: "rideshare.sid",
+  rolling: true, // reset expiry on every request (keeps active users logged in)
+  secret: env.sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  store: new PrismaStore(),
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    secure: env.cookieSecure,
+    httpOnly: true,               // JS on the page cannot read this cookie
+    sameSite: env.cookieSameSite, // CSRF protection
+  },
+});
+
+app.use(sessionMiddleware);
+
+// Expose session middleware on app.locals so Socket.IO can share it
+// (Socket.IO needs the same session to identify who is sending a chat message)
+app.locals.sessionMiddleware = sessionMiddleware;
+
+app.get("/health", (_req, res) => res.json({ status: "OK" }));
+
+// Public auth routes (login, callback, logout, status) — no auth required
+app.use("/auth", loginRoutes);
+
+// All routes below this line require a valid session
+app.use(authenticate);
+app.use(apiRoutes);
+
+// Catch-all for unmatched routes
+app.use((_req, res) => res.status(404).json({ success: false, message: "Route not found" }));
+
+// Centralised error handler — receives errors via next(error)
+app.use(errorHandler);
+
+export default app;
+

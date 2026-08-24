@@ -1,18 +1,12 @@
 import { getIO } from "./config/socket-config.js";
 import { getRideMembers, addMessage, getOlderMessages } from "./services/chatService.js";
 import { logger } from "./config/logger.js";
-import type { IncomingMessage } from "node:http";
-import type { SessionData } from "express-session";
 
-interface SessionIncomingMessage extends IncomingMessage {
-  session?: SessionData;
-}
-
-export function registerChatHandlers(): void {
+export function registerChatHandlers() {
   const io = getIO();
 
   io.on("connection", (socket) => {
-    const req = socket.request as SessionIncomingMessage;
+    const req = socket.request as any; // session is attached by initSocket via io.engine.use
     const sessionUser = req.session?.user;
 
     if (!sessionUser) {

@@ -1,11 +1,9 @@
-import { getEnvironment } from "../config/env.js";
+import { env } from "../config/env.js";
 
-/**
- * Returns true when the email's domain is in the allowed-domains list.
- * Used to restrict login to IIT Indore addresses.
- */
+// Returns true if the email's domain is in the allowed-domains list.
+// Used to restrict login to IIT Indore addresses only.
 export const isEmailAllowed = (email: string): boolean => {
-  const { allowedDomains } = getEnvironment();
   const emailDomain = email?.split("@")[1]?.toLowerCase();
-  return allowedDomains.includes(emailDomain);
+  return env.allowedDomains.includes(emailDomain);
 };
+

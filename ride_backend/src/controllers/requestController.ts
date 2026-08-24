@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import { Request, Response } from "express";
 import {
   handleUserSentRequest,
   handleUserReceivedRequest,
@@ -7,7 +7,7 @@ import {
 } from "../services/requestService.js";
 import { asyncHandler } from "../utils/index.js";
 
-/** POST /request/sendRequest — authenticated user requests to join a ride */
+// POST /request/sendRequest — authenticated user requests to join a ride
 export const sendRequest = asyncHandler(async (req: Request, res: Response) => {
   const rideID = Number(req.body.rideID);
   if (!Number.isInteger(rideID) || rideID <= 0) {

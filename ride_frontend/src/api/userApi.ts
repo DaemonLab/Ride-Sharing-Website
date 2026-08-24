@@ -1,5 +1,5 @@
 import axiosInstance from "./axiosInstance";
-import { UserProfile } from "../types";
+// import { UserProfile } from "../types";
 
 /**
  * API Layer — User
