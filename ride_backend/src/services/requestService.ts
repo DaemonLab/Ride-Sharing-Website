@@ -25,9 +25,9 @@ export async function handleUserSentRequest({ rideID, requestBy }: { rideID: num
 
     if (existing) {
       if (existing.requestStatus === "Accepted") return "Accepted";
-      if (existing.requestStatus === "Pending") return "Pending";
-      // Rejected or Left — allow re-request by deleting the old row first
-      await tx.requests.delete({ where: { id: existing.id } });
+      if (existing.requestStatus === "Pending")  return "Pending";
+      if (existing.requestStatus === "Rejected") return "Rejected";
+      if (existing.requestStatus === "Left")     return "Left";
     }
 
     // Look up the ride inside the same transaction for consistency

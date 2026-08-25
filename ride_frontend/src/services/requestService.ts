@@ -13,14 +13,20 @@ import { RideRequest, HandleRequestPayload } from "../types";
 
 /**
  * Sends a join request for a specific ride.
- * Throws on failure so the hook can set an error state.
+ * Returns the status string from the backend:
+ *   "RequestMade" — first-time successful request
+ *   "Pending"     — already has a pending request for this ride
+ *   "Accepted"    — already accepted into this ride
+ *   "Rejected"    — request was previously rejected (re-requesting blocked)
+ *   "Left"        — user previously left this ride (re-requesting blocked)
+ * Throws on HTTP/network failure so the hook can set an error state.
  */
-export const sendRideRequest = async (rideId: string): Promise<void> => {
+export const sendRideRequest = async (rideId: string): Promise<string> => {
   const rideID = Number(rideId);
   if (!Number.isInteger(rideID) || rideID <= 0) {
     throw new Error("Invalid ride ID");
   }
-  await sendRequestApi({ rideID });
+  return sendRequestApi({ rideID });
 };
 
 /**

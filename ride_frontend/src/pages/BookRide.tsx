@@ -21,7 +21,7 @@ export default function BookRide() {
   const navigate = useNavigate();
   const location = useLocation();
   const [paymentMethod] = useState('card');
-  const { sendRequest, loading, error } = useRideRequests();
+  const { sendRequest, loading, error, statusMessage } = useRideRequests();
 
   const rideDetails = location.state?.rideDetails as RideDetails;
 
@@ -122,6 +122,19 @@ export default function BookRide() {
             </div>
           </div>
 
+          {/* Status / Error Banner */}
+          {(error || statusMessage) && (
+            <div
+              className={`w-full text-sm px-4 py-3 rounded-lg border ${
+                error
+                  ? "bg-danger/10 border-danger/20 text-danger"
+                  : "bg-primary/10 border-primary/20 text-primary-dark"
+              }`}
+            >
+              {error ?? statusMessage}
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Button
@@ -131,8 +144,7 @@ export default function BookRide() {
             >
               Cancel
             </Button>
-            {error && <p className="text-danger text-sm text-center">{error}</p>}
-            <Button className="flex-1" onClick={handleBooking} disabled={loading}>
+            <Button className="flex-1" onClick={handleBooking} disabled={loading || !!statusMessage}>
               {loading ? 'Sending Request...' : 'Request to Join'}
             </Button>
           </div>
