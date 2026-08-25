@@ -54,6 +54,10 @@ export default function BookRide() {
     });
   };
 
+  // Derived: is the ride already full based on the state we navigated with?
+  // The backend is the source of truth, but this gives instant feedback.
+  const isFull = (rideDetails?.seats ?? 1) <= 0;
+
   return (
     <div className="min-h-screen py-28 relative">
       <div className="absolute w-[24rem] h-[24rem] rounded-full bg-primary/10 blur-[100px] top-16 -left-16 pointer-events-none" />
@@ -123,15 +127,17 @@ export default function BookRide() {
           </div>
 
           {/* Status / Error Banner */}
-          {(error || statusMessage) && (
+          {(error || statusMessage || isFull) && (
             <div
               className={`w-full text-sm px-4 py-3 rounded-lg border ${
-                error
+                error || isFull
                   ? "bg-danger/10 border-danger/20 text-danger"
                   : "bg-primary/10 border-primary/20 text-primary-dark"
               }`}
             >
-              {error ?? statusMessage}
+              {isFull && !error && !statusMessage
+                ? "This ride is full. No seats are available."
+                : error ?? statusMessage}
             </div>
           )}
 
@@ -144,7 +150,7 @@ export default function BookRide() {
             >
               Cancel
             </Button>
-            <Button className="flex-1" onClick={handleBooking} disabled={loading || !!statusMessage}>
+            <Button className="flex-1" onClick={handleBooking} disabled={loading || !!statusMessage || isFull}>
               {loading ? 'Sending Request...' : 'Request to Join'}
             </Button>
           </div>

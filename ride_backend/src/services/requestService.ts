@@ -12,8 +12,9 @@ function createError(message: string, statusCode = 400) {
 /**
  * Send a ride request.
  * - If an Accepted/Pending request already exists, return its status.
- * - If previously Rejected/Left, delete the old row and create a fresh Pending one.
- * Returns a status string describing the outcome.
+ * - If previously Rejected/Left, blocks re-requesting (returns the existing status).
+ * Returns a status string describing the outcome:
+ *   "RequestMade" | "Accepted" | "Pending" | "Rejected" | "Left"
  *
  * Wrapped in a $transaction to prevent a race condition where two concurrent
  * requests could both pass the seat-availability check before either is committed.
