@@ -5,6 +5,7 @@ import { env } from "./config/env.js";
 import { PrismaStore } from "./config/prismaStore.js";
 import apiRoutes from "./routes/index.js";
 import loginRoutes from "./routes/loginRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 import { authenticate } from "./middleware/authMiddleware.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 
@@ -58,8 +59,9 @@ app.locals.sessionMiddleware = sessionMiddleware;
 
 app.get("/health", (_req, res) => res.json({ status: "OK" }));
 
-// Public auth routes (login, callback, logout, status) — no auth required
+// Public routes (login, callback, logout, status, support) — no auth required
 app.use("/auth", loginRoutes);
+app.use(supportRoutes);
 
 // All routes below this line require a valid session
 app.use(authenticate);
