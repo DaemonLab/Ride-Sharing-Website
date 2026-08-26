@@ -21,8 +21,9 @@ export default function GroupMembers() {
 
   if (error) return <div className="min-h-screen py-28 text-center text-danger">{error}</div>;
   if (!group) return <div className="min-h-screen py-28 text-center text-ink-variant">Loading ride group...</div>;
-
-  const totalSeats = group.totalSeats ?? group.members.length + group.seatsAvailable;
+  const passengersFilled = group.members.length - 1; // excludes the ride owner
+  const totalSeats = group.totalSeats ?? (passengersFilled + group.seatsAvailable);
+  const isFull = group.seatsAvailable === 0;
   return (
     <div className="min-h-screen py-28 relative">
       <div className="container mx-auto px-4 relative z-10">
@@ -32,7 +33,17 @@ export default function GroupMembers() {
             <div className="flex items-center text-ink font-medium"><MapPin className="w-5 h-5 text-primary mr-2" />{group.source} → {group.destination}</div>
             <div className="flex gap-4 text-sm text-ink-variant"><span className="flex items-center"><Calendar className="w-4 h-4 mr-1" />{group.date}</span><span className="flex items-center"><Clock className="w-4 h-4 mr-1" />{group.time}</span></div>
           </div>
-          <div className="flex justify-between text-sm text-ink-variant pt-3 mt-3 border-t border-white/60"><span>{group.vehicleType}</span><span>{group.members.length}/{totalSeats} seats filled</span></div>
+          <div className="flex justify-between items-center text-sm text-ink-variant pt-3 mt-3 border-t border-white/60">
+            <span>{group.vehicleType}</span>
+            <div className="flex items-center gap-2">
+              <span>{passengersFilled}/{totalSeats} passenger seats taken</span>
+              {isFull && (
+                <span className="px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/30 text-xs font-bold uppercase tracking-wide">
+                  Full
+                </span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="max-w-2xl mx-auto space-y-3">
           {group.members.map((member) => (

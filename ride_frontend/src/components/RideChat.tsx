@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import { Loader, Send, ChevronDown, Users } from 'lucide-react';
-
-const socket = io(import.meta.env.VITE_BACKEND_URL || "http://localhost:3000", {
-  withCredentials: true
-});
 
 interface RideChatProps {
   rideID: string;
@@ -34,8 +30,19 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
   const chatRef = useRef<HTMLDivElement>(null);
   const [showMembers, setShowMembers] = useState(false);
 
+  // Socket is held in a ref so it persists across renders without triggering re-renders.
+  // It is created lazily the first time this component mounts — NOT at module load time —
+  // so there is no WebSocket connection opened on pages that don't use chat.
+  const socketRef = useRef<Socket | null>(null);
+
   useEffect(() => {
     if (!rideID) return;
+
+    // Create the socket connection only when the chat page is actually open
+    socketRef.current = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000', {
+      withCredentials: true,
+    });
+    const socket = socketRef.current;
 
     socket.emit('joinRoom', { rideId: rideID });
 
@@ -43,9 +50,9 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
       setMembers(memberList);
     });
 
-    socket.emit("getOlderMessages", { rideId: rideID });
+    socket.emit('getOlderMessages', { rideId: rideID });
 
-    socket.on("older messages", (fetchedMessages: Message[]) => {
+    socket.on('older messages', (fetchedMessages: Message[]) => {
       setMessages(fetchedMessages);
       setLoading(false);
     });
@@ -60,9 +67,9 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
     });
 
     return () => {
-      socket.off('chat message');
-      socket.off('ride members');
-      socket.off("older messages");
+      // Fully disconnect when navigating away from chat — prevents ghost connections
+      socket.disconnect();
+      socketRef.current = null;
     };
   }, [rideID]);
 
@@ -75,7 +82,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
 
   const handleSend = () => {
     const trimmed = newMessage.trim();
-    if (!trimmed) return;
+    if (!trimmed || !socketRef.current) return;
 
     const messageData = {
       rideId: rideID,
@@ -83,7 +90,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
       message: trimmed,
     };
 
-    socket.emit('chat message', messageData);
+    socketRef.current.emit('chat message', messageData);
     setNewMessage('');
   };
 
