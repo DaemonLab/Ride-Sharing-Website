@@ -33,3 +33,14 @@ export const env = {
   cookieSameSite:  (process.env.COOKIE_SAME_SITE || "lax") as "lax" | "strict" | "none",
 };
 
+// Fail fast in production if the session cookie would be sent over plain HTTP.
+// COOKIE_SECURE is not in the `required` array above because it legitimately
+// defaults to false in local development — but it must be true in production.
+if (env.nodeEnv === "production" && !env.cookieSecure) {
+  throw new Error(
+    "COOKIE_SECURE must be set to 'true' in production. " +
+    "Add COOKIE_SECURE=true to your environment variables."
+  );
+}
+
+

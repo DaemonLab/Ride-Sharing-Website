@@ -433,10 +433,10 @@ export default function Profile() {
                 <Mail className="w-3.5 h-3.5 text-[#8c93a8] shrink-0" />
                 <span className="truncate">{profile?.email}</span>
               </div>
-              <div className="flex items-center gap-2.5">
+              {/* <div className="flex items-center gap-2.5">
                 <MapPin className="w-3.5 h-3.5 text-[#8c93a8] shrink-0" />
                 <span>Usually rides <strong className="text-[#12172b]">{studentDetails.isIitiStudent ? "Campus → Rau" : "Indore City"}</strong></span>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2.5">
                 <Calendar className="w-3.5 h-3.5 text-[#8c93a8] shrink-0" />
                 <span>Joined <strong className="text-[#12172b]">{joinedDate}</strong></span>

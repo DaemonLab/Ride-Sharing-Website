@@ -25,7 +25,7 @@ export const authStatus = async () => {
 export const postLogout = async () => {
     try {
         const response = await fetch(`${backendUrl}/auth/logout`, {
-            method: "GET",
+            method: "POST",
             credentials: "include",
         });
         if (!response.ok) {
