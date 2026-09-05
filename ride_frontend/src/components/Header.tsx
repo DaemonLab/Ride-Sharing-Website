@@ -62,9 +62,9 @@ export default function Header() {
                     {user?.name?.split(" ")[0] ?? "Profile"}
                   </span>
                   <span className="w-8 h-8 rounded-full overflow-hidden bg-surface-container flex items-center justify-center border border-primary/20">
-                    {user?.profilePicture ? (
+                    {user?.profilePicture || user?.picture ? (
                       <img
-                        src={user.profilePicture}
+                        src={user.profilePicture || user.picture}
                         alt={user.name}
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover"

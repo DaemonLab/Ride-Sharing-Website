@@ -1,4 +1,4 @@
-import { User, Clock, MapPin, Mail, Calendar, Car, MessageCircle, Check, X, Plus, AlertCircle } from "lucide-react";
+import { Clock, MapPin, Mail, Calendar, Car, MessageCircle, Check, X, Plus, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { useProfile } from "../hooks/useProfile";
 import { useRides } from "../hooks/useRides";
@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { cancelUserRide, leaveUserRide } from "../services/rideService";
 import { Link, useNavigate } from "react-router-dom";
 import { useRideRequests } from "../hooks/useRideRequests";
-import { HandleRequestPayload, RideRequest } from "../types";
+import { HandleRequestPayload, RideRequest, Ride } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmModal from "../components/ConfirmModal";
 
@@ -112,7 +112,7 @@ export default function Profile() {
   } = useRides("profile");
 
   const isLoading = (profileLoading && !user) || ridesLoading;
-  const activeProfile = profile ?? (user ? { id: String(user.id), name: user.name, email: user.email, photoUrl: user.picture } : null);
+  const activeProfile = profile ?? (user ? { id: String(user.id), name: user.name, email: user.email, photoUrl: user.picture || user.profilePicture } : null);
   const studentDetails = getStudentDetails(activeProfile?.email);
   const initials = getInitials(activeProfile?.name);
 
@@ -187,7 +187,7 @@ export default function Profile() {
     );
   }
 
-  const RideRow = ({ ride, index, completed }: { ride: any; index: number; completed?: boolean }) => (
+  const RideRow = ({ ride, index, completed }: { ride: Ride; index: number; completed?: boolean }) => (
     <div
       key={ride.id ?? index}
       className="bg-white rounded-xl p-5 border border-[#e7e9f2] hover:border-[#3b6ef0]/40 transition-all duration-200 shadow-sm"

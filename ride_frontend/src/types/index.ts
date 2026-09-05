@@ -3,17 +3,19 @@
 export type RideType = "rickshaw" | "cab" | "other";
 
 export interface Ride {
-  id: string;
-  userId: string;
-  userName: string;
-  pickup: string;
-  dropoff: string;
-  dateTime: string;
-  rideType: RideType;
-  seatsAvailable: number;
+  id: string | number;
+  userId?: string;
+  userName?: string;
+  pickup?: string;
+  dropoff?: string;
+  dateTime?: string;
+  rideType?: RideType;
+  seatsAvailable?: number;
   estimatedCost?: number;
   notes?: string;
-  // Fields returned by the backend for the Find page
+  // Fields returned by the backend
+  rideID?: number | string;
+  createdBy?: number | string;
   from?: string;
   to?: string;
   date?: string;
@@ -62,10 +64,11 @@ export interface AuthContextType {
 }
 
 export interface User {
-  id: string;
+  id: string | number;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
+  picture?: string;
   profilePicture?: string;
   isAdmin?: boolean;
 }
