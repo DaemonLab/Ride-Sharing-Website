@@ -1,0 +1,21 @@
+# Node modules
+node_modules/
+ride_frontend/node_modules/
+ride_backend/node_modules/
+
+# Environment files
+.env
+ride_frontend/.env
+ride_backend/.env
+
+# Build outputs
+dist/
+build/
+ride_frontend/dist/
+ride_backend/dist/
+
+# IDE / System
+.DS_Store
+*.log
+.vscode/
+.idea/
