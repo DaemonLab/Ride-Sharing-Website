@@ -3,6 +3,7 @@
 export type RideType = "rickshaw" | "cab" | "other";
 
 export interface Ride {
+<<<<<<< HEAD
   id: string | number;
   userId?: string;
   userName?: string;

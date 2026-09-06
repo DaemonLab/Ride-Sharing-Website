@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ConfirmModal from "../components/ConfirmModal";
 
 /**
+/**
  * Parse student details & graduation class year from institutional email.
  * Uses starting prefix of the email (before '@') directly instead of mapping branch names.
  */
@@ -54,7 +55,6 @@ function getStudentDetails(email?: string) {
     institution,
   };
 }
-
 function getInitials(name?: string) {
   if (!name) return "ST";
   const parts = name.trim().split(" ");
