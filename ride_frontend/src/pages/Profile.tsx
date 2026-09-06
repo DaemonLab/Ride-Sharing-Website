@@ -11,8 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ConfirmModal from "../components/ConfirmModal";
 
 /**
-/**
- * Parse student details & graduation class year from institutional email.
+ * Parse student details & graduation class year from IIT Indore email (@iiti.ac.in).
  * Uses starting prefix of the email (before '@') directly instead of mapping branch names.
  */
 function getStudentDetails(email?: string) {
@@ -20,7 +19,7 @@ function getStudentDetails(email?: string) {
     return { isIitiStudent: false, branch: "", classYear: "", institution: "" };
   }
   const cleanEmail = email.toLowerCase();
-  const isStudent = cleanEmail.endsWith("@iiti.ac.in") || cleanEmail.endsWith("@iiit.ac.in") || cleanEmail.endsWith(".ac.in");
+  const isStudent = cleanEmail.endsWith("@iiti.ac.in");
 
   if (!isStudent) {
     return { isIitiStudent: false, branch: "", classYear: "", institution: "" };
@@ -42,17 +41,11 @@ function getStudentDetails(email?: string) {
     }
   }
 
-  const institution = cleanEmail.endsWith("@iiit.ac.in")
-    ? "IIIT"
-    : cleanEmail.endsWith("@iiti.ac.in")
-    ? "IIT Indore"
-    : "Institutional Student";
-
   return {
     isIitiStudent: true,
     branch,
     classYear,
-    institution,
+    institution: "IIT Indore",
   };
 }
 function getInitials(name?: string) {
