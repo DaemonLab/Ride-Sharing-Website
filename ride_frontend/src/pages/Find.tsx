@@ -139,8 +139,8 @@ export default function Find() {
               />
             </div>
 
-            {/* Relative z-50 here lifts the picker popovers above the results section below */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-50">
+            {/* Date and Time Pickers */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-variant uppercase tracking-wider mb-1.5 px-1">
                   Filter by Date

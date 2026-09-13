@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect, CSSProperties } from "react";
-import { createPortal } from "react-dom";
-import { Clock as ClockIcon, X, Check } from "lucide-react";
+import React, { useRef } from "react";
+import { Clock as ClockIcon, X } from "lucide-react";
 
 interface CustomTimePickerProps {
   value: string; // HH:mm (24-hour format)
@@ -10,293 +9,95 @@ interface CustomTimePickerProps {
   required?: boolean;
 }
 
-const HOURS_12 = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
-
 export default function CustomTimePicker({
   value,
   onChange,
   placeholder = "Select Time",
   className = "",
+  required = false,
 }: CustomTimePickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({});
-
-  // Parse existing HH:mm into 12-hour components
-  const parseTime = (val: string) => {
-    if (!val || !val.includes(":")) {
-      const now = new Date();
-      const h24 = now.getHours();
-      const m = Math.ceil(now.getMinutes() / 5) * 5 % 60;
-      return {
-        hour12: h24 % 12 === 0 ? 12 : h24 % 12,
-        minute: String(m).padStart(2, "0"),
-        period: h24 >= 12 ? "PM" : "AM",
-      };
-    }
-    const [hStr, mStr] = val.split(":");
-    const h24 = parseInt(hStr, 10) || 0;
-    const m = mStr || "00";
-    return {
-      hour12: h24 % 12 === 0 ? 12 : h24 % 12,
-      minute: m.padStart(2, "0"),
-      period: h24 >= 12 ? "PM" : "AM",
-    };
-  };
-
-  const initial = parseTime(value);
-  const [selectedHour, setSelectedHour] = useState<number>(initial.hour12);
-  const [selectedMinute, setSelectedMinute] = useState<string>(initial.minute);
-  const [selectedPeriod, setSelectedPeriod] = useState<"AM" | "PM">(initial.period as "AM" | "PM");
-
-  // Keep local state in sync when value prop updates
-  useEffect(() => {
-    if (value) {
-      const parsed = parseTime(value);
-      setSelectedHour(parsed.hour12);
-      setSelectedMinute(parsed.minute);
-      setSelectedPeriod(parsed.period as "AM" | "PM");
-    }
-  }, [value]);
-
-  // Close on outside click — checks both trigger and portaled popover
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
-      const insideTrigger = containerRef.current?.contains(target);
-      const insidePopover = popoverRef.current?.contains(target);
-      if (!insideTrigger && !insidePopover) {
-        setIsOpen(false);
-      }
-    }
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
-
-  // Recalculate portal position whenever popover opens or window scrolls/resizes
-  useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
-    const updatePos = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const popoverWidth = 288; // 18rem
-      let left = rect.left;
-      if (left + popoverWidth > window.innerWidth - 12) {
-        left = Math.max(12, window.innerWidth - popoverWidth - 12);
-      }
-      setPopoverStyle({
-        position: "fixed",
-        top: rect.bottom + 8,
-        left: left,
-        zIndex: 9999,
-      });
-    };
-    updatePos();
-    window.addEventListener("scroll", updatePos, true);
-    window.addEventListener("resize", updatePos);
-    return () => {
-      window.removeEventListener("scroll", updatePos, true);
-      window.removeEventListener("resize", updatePos);
-    };
-  }, [isOpen]);
-
-  const commitTime = (h12: number, min: string, per: "AM" | "PM") => {
-    let h24 = h12;
-    if (per === "AM") {
-      h24 = h12 === 12 ? 0 : h12;
-    } else {
-      h24 = h12 === 12 ? 12 : h12 + 12;
-    }
-    const time24 = `${String(h24).padStart(2, "0")}:${min}`;
-    onChange(time24);
-  };
-
-  const handleHourSelect = (h: number) => {
-    setSelectedHour(h);
-    commitTime(h, selectedMinute, selectedPeriod);
-  };
-
-  const handleMinuteSelect = (m: string) => {
-    setSelectedMinute(m);
-    commitTime(selectedHour, m, selectedPeriod);
-  };
-
-  const handlePeriodToggle = (p: "AM" | "PM") => {
-    setSelectedPeriod(p);
-    commitTime(selectedHour, selectedMinute, p);
-  };
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const formatDisplay = (val: string) => {
     if (!val) return "";
-    const parsed = parseTime(val);
-    return `${parsed.hour12}:${parsed.minute} ${parsed.period}`;
-  };
-
-  const handleQuickPick = (h24: number, m: number) => {
-    const time24 = `${String(h24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    onChange(time24);
-    setIsOpen(false);
+    const parts = val.split(":");
+    if (parts.length < 2) return val;
+    const h = parseInt(parts[0], 10);
+    const m = parts[1].slice(0, 2);
+    if (Number.isNaN(h)) return val;
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${m} ${period}`;
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     onChange("");
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  };
+
+  const triggerPicker = () => {
+    try {
+      inputRef.current?.showPicker?.();
+    } catch {
+      inputRef.current?.focus();
+    }
   };
 
   return (
-    <div ref={containerRef} className={`relative select-none ${className}`}>
-      {/* Input Trigger */}
-      <div
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="glass-input flex items-center justify-between rounded-lg px-4 py-3 cursor-pointer transition-all hover:border-primary/50"
-      >
-        <div className="flex items-center gap-3 overflow-hidden">
-          <ClockIcon className="w-5 h-5 text-primary shrink-0" />
-          <span className={`text-sm truncate ${value ? "text-ink font-medium" : "text-ink-variant/50"}`}>
-            {value ? formatDisplay(value) : placeholder}
-          </span>
-        </div>
+    <div
+      onClick={triggerPicker}
+      className={`glass-input relative flex items-center justify-between rounded-lg px-4 py-3 cursor-pointer transition-all hover:border-primary/50 group ${className}`}
+    >
+      <div className="flex items-center gap-3 overflow-hidden pointer-events-none">
+        <ClockIcon className="w-5 h-5 text-primary shrink-0 transition-transform group-hover:scale-110" />
+        <span
+          className={`text-sm truncate select-none ${
+            value ? "text-ink font-medium" : "text-ink-variant/50"
+          }`}
+        >
+          {value ? formatDisplay(value) : placeholder}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
         {value && (
           <button
             type="button"
             onClick={handleClear}
-            className="p-1 rounded-full text-ink-variant/50 hover:text-ink hover:bg-ink/5 transition-colors"
+            className="relative z-20 p-1 rounded-full text-ink-variant/50 hover:text-ink hover:bg-ink/10 transition-colors"
             title="Clear time"
+            aria-label="Clear time"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      {/* Popover Time Selector — rendered via portal to escape backdrop-filter stacking context */}
-      {isOpen && createPortal(
-        <div
-          ref={popoverRef}
-          style={{
-            ...popoverStyle,
-            boxShadow: "0 20px 48px rgba(46, 123, 255, 0.18), 0 4px 16px rgba(0, 0, 0, 0.06)",
-          }}
-          className="w-72 rounded-2xl glass-strong border border-white/80 p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
-        >
-          {/* Header & AM/PM Toggle */}
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-display text-sm font-bold text-ink">
-              Select <span className="text-primary">Time</span>
-            </h4>
-            <div className="flex p-0.5 rounded-lg bg-ink/5 border border-ink/10">
-              <button
-                type="button"
-                onClick={() => handlePeriodToggle("AM")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                  selectedPeriod === "AM"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-ink-variant hover:text-ink"
-                }`}
-              >
-                AM
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePeriodToggle("PM")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                  selectedPeriod === "PM"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-ink-variant hover:text-ink"
-                }`}
-              >
-                PM
-              </button>
-            </div>
-          </div>
-
-          {/* Hour & Minute Selectors Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {/* Hours Column */}
-            <div>
-              <p className="text-[11px] font-semibold text-ink-variant uppercase tracking-wider mb-2 text-center">
-                Hour
-              </p>
-              <div className="grid grid-cols-3 gap-1 max-h-36 overflow-y-auto p-1 bg-white/40 rounded-xl border border-white/60">
-                {HOURS_12.map((h) => (
-                  <button
-                    key={`h-${h}`}
-                    type="button"
-                    onClick={() => handleHourSelect(h)}
-                    className={`h-7 text-xs font-medium rounded-lg transition-all ${
-                      selectedHour === h
-                        ? "bg-primary text-white font-bold shadow-sm"
-                        : "text-ink hover:bg-primary/10 hover:text-primary"
-                    }`}
-                  >
-                    {h}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Minutes Column */}
-            <div>
-              <p className="text-[11px] font-semibold text-ink-variant uppercase tracking-wider mb-2 text-center">
-                Minute
-              </p>
-              <div className="grid grid-cols-2 gap-1 max-h-36 overflow-y-auto p-1 bg-white/40 rounded-xl border border-white/60">
-                {MINUTES.map((m) => (
-                  <button
-                    key={`m-${m}`}
-                    type="button"
-                    onClick={() => handleMinuteSelect(m)}
-                    className={`h-7 text-xs font-medium rounded-lg transition-all ${
-                      selectedMinute === m
-                        ? "bg-primary text-white font-bold shadow-sm"
-                        : "text-ink hover:bg-primary/10 hover:text-primary"
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Presets */}
-          <div className="border-t border-ink/10 pt-3 flex flex-wrap gap-1.5 justify-between">
-            <button
-              type="button"
-              onClick={() => {
-                const now = new Date();
-                handleQuickPick(now.getHours(), Math.ceil(now.getMinutes() / 5) * 5 % 60);
-              }}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-            >
-              Now
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const inOne = new Date(Date.now() + 60 * 60 * 1000);
-                handleQuickPick(inOne.getHours(), Math.ceil(inOne.getMinutes() / 5) * 5 % 60);
-              }}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-secondary/15 text-secondary-dark hover:bg-secondary/25 transition-colors"
-            >
-              +1 Hour
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="ml-auto inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-md bg-primary text-white hover:bg-primary-dark transition-all shadow-sm"
-            >
-              <Check className="w-3.5 h-3.5" /> Done
-            </button>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Transparent native HTML5 time input capturing clicks, keyboard, and OS pickers */}
+      <input
+        ref={inputRef}
+        type="time"
+        value={value || ""}
+        required={required}
+        onChange={(e) => onChange(e.target.value)}
+        onClick={(e) => {
+          try {
+            e.currentTarget.showPicker?.();
+          } catch {}
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            try {
+              e.currentTarget.showPicker?.();
+            } catch {}
+          }
+        }}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+      />
     </div>
   );
 }
