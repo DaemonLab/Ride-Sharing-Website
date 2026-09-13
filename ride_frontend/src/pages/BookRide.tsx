@@ -32,11 +32,8 @@ export default function BookRide() {
   }, [navigate, rideDetails]);
 
   if (!rideDetails) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-ink-variant">
-        Loading...
-      </div>
-    );
+    // useEffect above will redirect to /find — return null to avoid a flash
+    return null;
   }
 
   const handleBooking = async () => {

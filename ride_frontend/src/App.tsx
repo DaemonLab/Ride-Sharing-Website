@@ -20,6 +20,7 @@ const BookRide     = lazy(() => import("./pages/BookRide"));
 const BookingSuccess = lazy(() => import("./pages/BookingSuccess"));
 const GroupMembers = lazy(() => import("./pages/GroupMembers"));
 const Chat         = lazy(() => import("./pages/Chats"));
+const NotFound     = lazy(() => import("./pages/NotFound"));
 
 /** Minimal full-screen spinner shown while a page chunk is loading */
 function PageLoader() {
@@ -65,6 +66,8 @@ function App() {
                     <Route path="/chat" element={<Chat />} />
                     <Route path="/chat/:rideID" element={<Chat />} />
                   </Route>
+                  {/* Catch-all: any unknown URL renders the 404 page */}
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
             </main>

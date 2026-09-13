@@ -87,8 +87,10 @@ export function useRides(mode: "find" | "profile" | "none" = "none") {
       await postRide(rideData);
       setSubmitSuccess(true);
       return true;
-    } catch {
-      setError("Failed to post ride. Please try again.");
+    } catch (err: unknown) {
+      // Surface the actual backend error message (e.g. Zod validation details)
+      const msg = (err as any)?.response?.data?.message;
+      setError(msg ?? "Failed to post ride. Please try again.");
       return false;
     } finally {
       setLoading(false);

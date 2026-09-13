@@ -9,18 +9,49 @@ export default function GroupMembers() {
   const { rideID } = useParams<{ rideID: string }>();
   const [group, setGroup] = useState<RideGroup | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchGroup = () => {
     const id = Number(rideID);
     if (!Number.isInteger(id) || id <= 0) {
       setError("Invalid ride group.");
+      setLoading(false);
       return;
     }
-    getRideGroup(id).then(setGroup).catch(() => setError("Unable to load this ride group."));
-  }, [rideID]);
+    setLoading(true);
+    setError(null);
+    getRideGroup(id)
+      .then((data) => { setGroup(data); setLoading(false); })
+      .catch(() => { setError("Unable to load this ride group."); setLoading(false); });
+  };
 
-  if (error) return <div className="min-h-screen py-28 text-center text-danger">{error}</div>;
-  if (!group) return <div className="min-h-screen py-28 text-center text-ink-variant">Loading ride group...</div>;
+  useEffect(() => { fetchGroup(); }, [rideID]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen py-28 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen py-28 flex flex-col items-center justify-center gap-4 text-center px-4">
+        <p className="text-danger text-sm font-medium">{error}</p>
+        <button
+          onClick={fetchGroup}
+          className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+  // At this point: loading is false and no error — group should be set.
+  // The null guard narrows the type from RideGroup | null → RideGroup.
+  if (!group) return null;
+
   const passengersFilled = group.members.length - 1; // excludes the ride owner
   const totalSeats = group.totalSeats ?? (passengersFilled + group.seatsAvailable);
   const isFull = group.seatsAvailable === 0;

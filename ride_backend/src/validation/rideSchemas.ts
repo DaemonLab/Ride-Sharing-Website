@@ -30,10 +30,11 @@ export const rideCreateSchema = z
   });
 
 // Schema for POST /rides/filteredAvailableRides
+// time is intentionally excluded — exact-match time filtering is timezone-unsafe.
+// Client-side ±60min fuzzy matching in Find.tsx handles time filtering instead.
 export const rideFilterSchema = z.object({
   source:      z.string().trim().max(255).optional().default(""),
   destination: z.string().trim().max(255).optional().default(""),
   date:        z.string().regex(datePattern, "Date must be YYYY-MM-DD").optional().or(z.literal("")).default(""),
-  time:        z.string().regex(timePattern, "Time must be HH:mm").optional().or(z.literal("")).default(""),
 });
 

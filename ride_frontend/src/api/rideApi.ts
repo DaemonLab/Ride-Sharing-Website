@@ -36,20 +36,20 @@ export const fetchAvailableRides = async (): Promise<Ride[]> => {
   return (response.data.data ?? []).map(normalizeRide);
 };
 
-/** Fetch rides filtered by from/to/date/time criteria */
+/** Fetch rides filtered by from/to/date criteria (time is handled client-side) */
 export const fetchFilteredRides = async (filters: RideFilters): Promise<Ride[]> => {
   const response = await axiosInstance.post<{ success: boolean; data: Ride[] }>("/rides/filteredAvailableRides", {
     source: filters.from,
     destination: filters.to,
     date: filters.date,
+    // time intentionally omitted — exact-match is timezone-unsafe; client-side ±60min handles it
   });
   return (response.data.data ?? []).map(normalizeRide);
 };
 
-/** Post a new ride offering */
-export const addRide = async (rideData: NewRidePayload): Promise<Ride> => {
-  const response = await axiosInstance.post<{ success: boolean; data: Ride }>("/rides/addRide", rideData);
-  return response.data.data ? normalizeRide(response.data.data) : (undefined as unknown as Ride);
+/** Post a new ride offering — backend returns no data, just a success message */
+export const addRide = async (rideData: NewRidePayload): Promise<void> => {
+  await axiosInstance.post("/rides/addRide", rideData);
 };
 
 /** Fetch the logged-in user's upcoming (pending) rides */

@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { cancelUserRide, leaveUserRide } from "../services/rideService";
 import { Link, useNavigate } from "react-router-dom";
 import { useRideRequests } from "../hooks/useRideRequests";
-import { HandleRequestPayload, RideRequest } from "../types";
+import { HandleRequestPayload, RideRequest, User as UserType } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmModal from "../components/ConfirmModal";
 
@@ -181,9 +181,25 @@ export default function Profile() {
     );
   }
 
-  const RideRow = ({ ride, index, completed }: { ride: any; index: number; completed?: boolean }) => (
+// ---------------------------------------------------------------------------
+// Module-level sub-components
+// These MUST live outside Profile() so React's hook call order stays stable.
+// RideRow: pure display — no hooks.
+// RequestRow: has its own useState — would violate Rules of Hooks if defined inside Profile.
+// ---------------------------------------------------------------------------
+
+interface RideRowProps {
+  ride: any;
+  index: number;
+  completed?: boolean;
+  user: UserType | null;
+  onCancel: (rideID: number) => void;
+  onLeave: (rideID: number) => void;
+}
+
+function RideRow({ ride, index, completed, user, onCancel, onLeave }: RideRowProps) {
+  return (
     <div
-      key={ride.id ?? index}
       className="bg-white rounded-xl p-5 border border-[#e7e9f2] hover:border-[#3b6ef0]/40 transition-all duration-200 shadow-sm"
     >
       <div className="flex justify-between items-start gap-4 flex-wrap">
@@ -260,7 +276,7 @@ export default function Profile() {
             <button
               type="button"
               className="px-3 py-1.5 rounded-lg bg-[#fef2f2] border border-[#fee2e2] text-[#dc2626] text-xs font-semibold hover:bg-[#dc2626] hover:text-white transition"
-              onClick={() => handleCancelRideClick(Number(ride.rideID))}
+              onClick={() => onCancel(Number(ride.rideID))}
             >
               Cancel ride
             </button>
@@ -268,7 +284,7 @@ export default function Profile() {
             <button
               type="button"
               className="px-3 py-1.5 rounded-lg bg-[#fef2f2] border border-[#fee2e2] text-[#dc2626] text-xs font-semibold hover:bg-[#dc2626] hover:text-white transition"
-              onClick={() => handleLeaveRideClick(Number(ride.rideID))}
+              onClick={() => onLeave(Number(ride.rideID))}
             >
               Leave ride
             </button>
@@ -277,17 +293,26 @@ export default function Profile() {
       )}
     </div>
   );
+}
 
-  const RequestRow = ({ request, received }: { request: RideRequest; received: boolean }) => {
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const decide = async (flag: HandleRequestPayload["flag"]) => {
-      setIsSubmitting(true);
-      const success = await handleRequest({ rideID: request.rideID, requestBy: request.requestBy, flag });
-      if (!success) setActionError("Unable to update this ride request.");
-      setIsSubmitting(false);
-    };
+interface RequestRowProps {
+  request: RideRequest;
+  received: boolean;
+  onHandle: (payload: HandleRequestPayload) => Promise<boolean>;
+  onError: (msg: string) => void;
+}
 
-    return (
+// RequestRow uses useState — MUST be at module level (not inside Profile)
+function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const decide = async (flag: HandleRequestPayload["flag"]) => {
+    setIsSubmitting(true);
+    const success = await onHandle({ rideID: request.rideID, requestBy: request.requestBy, flag });
+    if (!success) onError("Unable to update this ride request.");
+    setIsSubmitting(false);
+  };
+
+  return (
       <div className="bg-white rounded-xl p-5 border border-[#e7e9f2] shadow-sm">
         <div className="flex justify-between gap-4 flex-wrap items-center">
           <div className="space-y-2 flex-1">
@@ -337,10 +362,10 @@ export default function Profile() {
               Pending
             </span>
           )}
-        </div>
       </div>
-    );
-  };
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-[#f6f7fb] text-[#12172b]">
@@ -581,7 +606,14 @@ export default function Profile() {
                       </div>
                     ) : (
                       upcomingRides.map((ride, index) => (
-                        <RideRow ride={ride} index={index} key={ride.id ?? index} />
+                        <RideRow
+                          key={ride.id ?? index}
+                          ride={ride}
+                          index={index}
+                          user={user}
+                          onCancel={handleCancelRideClick}
+                          onLeave={handleLeaveRideClick}
+                        />
                       ))
                     )}
                   </motion.div>
@@ -609,7 +641,15 @@ export default function Profile() {
                       </div>
                     ) : (
                       completedRides.map((ride, index) => (
-                        <RideRow ride={ride} index={index} completed key={ride.id ?? index} />
+                        <RideRow
+                          key={ride.id ?? index}
+                          ride={ride}
+                          index={index}
+                          completed
+                          user={user}
+                          onCancel={handleCancelRideClick}
+                          onLeave={handleLeaveRideClick}
+                        />
                       ))
                     )}
                   </motion.div>
@@ -642,7 +682,13 @@ export default function Profile() {
                           ) : (
                             <div className="space-y-3">
                               {receivedRequests.map((request) => (
-                                <RequestRow key={request.id} request={request} received />
+                                <RequestRow
+                                  key={request.id}
+                                  request={request}
+                                  received
+                                  onHandle={handleRequest}
+                                  onError={setActionError}
+                                />
                               ))}
                             </div>
                           )}
@@ -659,7 +705,13 @@ export default function Profile() {
                           ) : (
                             <div className="space-y-3">
                               {sentRequests.map((request) => (
-                                <RequestRow key={request.id} request={request} received={false} />
+                                <RequestRow
+                                  key={request.id}
+                                  request={request}
+                                  received={false}
+                                  onHandle={handleRequest}
+                                  onError={setActionError}
+                                />
                               ))}
                             </div>
                           )}

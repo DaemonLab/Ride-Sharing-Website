@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface CustomDatePickerProps {
@@ -26,24 +27,51 @@ export default function CustomDatePicker({
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef   = useRef<HTMLDivElement>(null);
+  // Fixed position for the portal-rendered popover
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({});
 
   // Parse initial selected date or default to current date
   const parsedDate = value ? new Date(value + "T00:00:00") : new Date();
   const [viewYear, setViewYear] = useState(parsedDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(parsedDate.getMonth());
 
-  // Close on outside click
+  // Close on outside click — must check both the trigger and the portaled popover
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+      const target = event.target as Node;
+      const insideTrigger  = containerRef.current?.contains(target);
+      const insidePopover  = popoverRef.current?.contains(target);
+      if (!insideTrigger && !insidePopover) setIsOpen(false);
+    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  // Recalculate portal position whenever the popover opens or the window scrolls/resizes
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const updatePos = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const popoverWidth = 288;
+      let left = rect.left;
+      if (left + popoverWidth > window.innerWidth - 12) {
+        left = Math.max(12, window.innerWidth - popoverWidth - 12);
       }
-    }
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+      setPopoverStyle({
+        position: "fixed",
+        top: rect.bottom + 8,
+        left: left,
+        zIndex: 9999,
+      });
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
     };
   }, [isOpen]);
 
@@ -146,13 +174,15 @@ export default function CustomDatePicker({
         )}
       </div>
 
-      {/* Popover Calendar */}
-      {isOpen && (
+      {/* Popover Calendar — rendered via portal to escape backdrop-filter stacking context */}
+      {isOpen && createPortal(
         <div
-          className="absolute z-50 mt-2 left-0 sm:left-auto right-0 sm:right-auto w-72 rounded-2xl glass-strong border border-white/80 p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+          ref={popoverRef}
           style={{
+            ...popoverStyle,
             boxShadow: "0 20px 48px rgba(46, 123, 255, 0.18), 0 4px 16px rgba(0, 0, 0, 0.06)",
           }}
+          className="w-72 rounded-2xl glass-strong border border-white/80 p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Header Month / Year & Navigation */}
           <div className="flex items-center justify-between mb-3 px-1">
@@ -254,7 +284,8 @@ export default function CustomDatePicker({
               Today
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

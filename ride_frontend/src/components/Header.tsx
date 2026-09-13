@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, X, User, LogOut, AlertCircle } from "lucide-react";
 import Button from "./Button";
 import { useAuth } from "../hooks/useAuth";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const location = useLocation();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, error } = useAuth();
 
   const navItems = [
     { label: "Home", path: "/" },
@@ -19,9 +20,13 @@ export default function Header() {
 
   const isActivePath = (path: string) => location.pathname === path;
 
+  // Show logout error banner when auth error is set and user hasn't dismissed it
+  const showErrorBanner = !!error && !bannerDismissed;
+
   return (
-    <header className="fixed top-0 w-full z-50 glass-nav">
-      <div className="container mx-auto px-4 md:px-8">
+    <>
+      <header className="fixed top-0 w-full z-50 glass-nav">
+        <div className="container mx-auto px-4 md:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
@@ -148,5 +153,23 @@ export default function Header() {
         )}
       </div>
     </header>
+
+    {/* Logout error banner — shown below the fixed header when auth error is set */}
+    {showErrorBanner && (
+      <div className="fixed top-20 left-0 w-full z-40 flex justify-center px-4 pt-2 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-3 bg-danger/10 border border-danger/25 text-danger rounded-lg px-4 py-2.5 text-sm shadow-sm max-w-md w-full">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            aria-label="Dismiss"
+            className="text-danger/70 hover:text-danger transition-colors font-bold leading-none"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    )}
+  </>
   );
 }

@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Clock as ClockIcon, X, Check } from "lucide-react";
 
 interface CustomTimePickerProps {
@@ -20,6 +21,8 @@ export default function CustomTimePicker({
 }: CustomTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({});
 
   // Parse existing HH:mm into 12-hour components
   const parseTime = (val: string) => {
@@ -58,10 +61,13 @@ export default function CustomTimePicker({
     }
   }, [value]);
 
-  // Close on outside click
+  // Close on outside click — checks both trigger and portaled popover
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const insideTrigger = containerRef.current?.contains(target);
+      const insidePopover = popoverRef.current?.contains(target);
+      if (!insideTrigger && !insidePopover) {
         setIsOpen(false);
       }
     }
@@ -70,6 +76,33 @@ export default function CustomTimePicker({
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Recalculate portal position whenever popover opens or window scrolls/resizes
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const updatePos = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const popoverWidth = 288; // 18rem
+      let left = rect.left;
+      if (left + popoverWidth > window.innerWidth - 12) {
+        left = Math.max(12, window.innerWidth - popoverWidth - 12);
+      }
+      setPopoverStyle({
+        position: "fixed",
+        top: rect.bottom + 8,
+        left: left,
+        zIndex: 9999,
+      });
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
     };
   }, [isOpen]);
 
@@ -141,13 +174,15 @@ export default function CustomTimePicker({
         )}
       </div>
 
-      {/* Popover */}
-      {isOpen && (
+      {/* Popover Time Selector — rendered via portal to escape backdrop-filter stacking context */}
+      {isOpen && createPortal(
         <div
-          className="absolute z-50 mt-2 right-0 sm:right-auto left-0 sm:left-auto w-72 rounded-2xl glass-strong border border-white/80 p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+          ref={popoverRef}
           style={{
+            ...popoverStyle,
             boxShadow: "0 20px 48px rgba(46, 123, 255, 0.18), 0 4px 16px rgba(0, 0, 0, 0.06)",
           }}
+          className="w-72 rounded-2xl glass-strong border border-white/80 p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Header & AM/PM Toggle */}
           <div className="flex items-center justify-between mb-4">
@@ -259,7 +294,8 @@ export default function CustomTimePicker({
               <Check className="w-3.5 h-3.5" /> Done
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
