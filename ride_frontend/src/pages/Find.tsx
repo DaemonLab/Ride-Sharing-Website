@@ -41,10 +41,21 @@ export default function Find() {
     });
   };
 
-  // Helper to convert "HH:MM" to minutes for time comparison
+  // Helper to convert "HH:MM" (or "H:MM AM/PM") to minutes for fuzzy time comparison
   const timeToMinutes = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    return hours * 60 + minutes;
+    if (!timeStr) return 0;
+    const cleaned = timeStr.trim();
+    if (cleaned.toLowerCase().includes("am") || cleaned.toLowerCase().includes("pm")) {
+      const isPM = cleaned.toLowerCase().includes("pm");
+      const parts = cleaned.replace(/(am|pm)/i, "").trim().split(":");
+      let h = parseInt(parts[0], 10) || 0;
+      const m = parseInt(parts[1], 10) || 0;
+      if (isPM && h !== 12) h += 12;
+      if (!isPM && h === 12) h = 0;
+      return h * 60 + m;
+    }
+    const [hours, minutes] = cleaned.split(":").map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
   };
 
   // Client-side filter on top of the fetched rides (for instant UX)
@@ -71,8 +82,8 @@ export default function Find() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Re-fetch from backend with filters applied server-side
-    fetchRides(filters);
+    // Only date is sent to the backend — time/from/to are pure client-side (filteredRides memo)
+    fetchRides({ date: filters.date });
   };
 
   const formatDate = (dateStr: string) => {
@@ -99,7 +110,7 @@ export default function Find() {
         {/* Search Form */}
         <form
           onSubmit={handleSearch}
-          className="max-w-2xl mx-auto glass-strong rounded-md p-6 md:p-8"
+          className="max-w-2xl mx-auto glass-strong rounded-md p-6 md:p-8 relative z-20"
         >
           <div className="space-y-4">
             <div className="glass-input flex items-center rounded-lg px-4 py-3">
@@ -128,6 +139,7 @@ export default function Find() {
               />
             </div>
 
+            {/* Date and Time Pickers */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-variant uppercase tracking-wider mb-1.5 px-1">
@@ -144,7 +156,8 @@ export default function Find() {
 
               <div>
                 <label className="block text-xs font-semibold text-ink-variant uppercase tracking-wider mb-1.5 px-1">
-                  Filter by Time
+                  Filter by Time{" "}
+                  <span className="normal-case font-normal text-ink-variant/60">(±1 hr)</span>
                 </label>
                 <CustomTimePicker
                   value={filters.time || ""}
@@ -164,7 +177,7 @@ export default function Find() {
         </form>
 
         {/* Results Section */}
-        <div className="max-w-4xl mx-auto mt-14">
+        <div className="max-w-4xl mx-auto mt-14 relative z-10">
           <h2 className="font-display text-xl font-semibold mb-6 text-ink">
             Available Rides ({filteredRides.length})
           </h2>

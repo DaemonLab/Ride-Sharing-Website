@@ -56,7 +56,7 @@ export async function cancelRide({ rideID, ownerID }: { rideID: number; ownerID:
     });
 
     await tx.requests.updateMany({
-      where: { rideID, requestStatus: "Pending" },
+      where: { rideID, requestStatus: { in: ["Pending", "Accepted"] } },
       data: { requestStatus: "Rejected" },
     });
     return { rideID, rideStatus: "Cancelled" };
@@ -139,12 +139,10 @@ export async function getFilteredPendingRides({
   source,
   destination,
   date,
-  time,
 }: {
   source: string;
   destination: string;
   date: string;
-  time: string;
 }) {
   try {
     const where: any = {
@@ -153,7 +151,7 @@ export async function getFilteredPendingRides({
     };
 
     if (date) where.date = date;
-    if (time) where.time = time;
+    // time filtering is intentionally excluded — client-side ±60min matching handles it
     if (source?.trim()) where.source = { contains: source.trim(), mode: "insensitive" };
     if (destination?.trim()) where.destination = { contains: destination.trim(), mode: "insensitive" };
 

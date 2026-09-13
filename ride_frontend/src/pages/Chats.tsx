@@ -15,7 +15,9 @@ function Chat() {
         <div className="max-w-2xl mx-auto">
           <h1 className="font-display text-3xl font-bold text-ink mb-2">Your Ride Chats</h1>
           <p className="text-ink-variant mb-8">Select an upcoming ride to open its group chat.</p>
-          {loading ? <p className="text-ink-variant">Loading rides...</p> : upcomingRides.length === 0 ? (
+          {loading ? (
+            <p className="text-ink-variant">Loading rides...</p>
+          ) : upcomingRides.length === 0 ? (
             <p className="text-ink-variant">You have no upcoming rides with chat access.</p>
           ) : (
             <div className="space-y-3">{upcomingRides.map((ride) => (

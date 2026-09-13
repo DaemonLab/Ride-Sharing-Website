@@ -1,8 +1,9 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 const ProtectedRoute = () => {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   // Wait for the auth check to finish before deciding to redirect
   if (loading) {
@@ -14,7 +15,14 @@ const ProtectedRoute = () => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/signin?message=Please sign in to access this page" />;
+    // Pass the attempted path in state so SignIn can redirect back after login
+    return (
+      <Navigate
+        to="/signin"
+        state={{ from: location.pathname + location.search }}
+        replace
+      />
+    );
   }
 
   return <Outlet />;

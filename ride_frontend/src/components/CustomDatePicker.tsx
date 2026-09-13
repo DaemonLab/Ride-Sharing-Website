@@ -10,13 +10,6 @@ interface CustomDatePickerProps {
   required?: boolean;
 }
 
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-
-const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
 export default function CustomDatePicker({
   value,
   onChange,
@@ -25,66 +18,29 @@ export default function CustomDatePicker({
   className = "",
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Parse initial selected date or default to current date
-  const parsedDate = value ? new Date(value + "T00:00:00") : new Date();
-  const [viewYear, setViewYear] = useState(parsedDate.getFullYear());
-  const [viewMonth, setViewMonth] = useState(parsedDate.getMonth());
-
-  // Close on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
-
-  // Sync view when value changes
-  useEffect(() => {
+  // Parse initial selected date or current date for month view
+  const getInitialDate = () => {
     if (value) {
       const d = new Date(value + "T00:00:00");
-      if (!Number.isNaN(d.getTime())) {
-        setViewYear(d.getFullYear());
-        setViewMonth(d.getMonth());
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    return new Date();
+  };
+
+  const [currentMonth, setCurrentMonth] = useState<Date>(getInitialDate());
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close calendar popover on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
       }
-    }
-  }, [value]);
-
-  const handlePrevMonth = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear((y) => y - 1);
-    } else {
-      setViewMonth((m) => m - 1);
-    }
-  };
-
-  const handleNextMonth = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear((y) => y + 1);
-    } else {
-      setViewMonth((m) => m + 1);
-    }
-  };
-
-  // Compute days in month grid
-  const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
-
-  const minDateObj = minDate ? new Date(minDate + "T00:00:00") : null;
-  const todayStr = new Date().toISOString().slice(0, 10);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const formatDisplay = (val: string) => {
     if (!val) return "";
@@ -98,81 +54,103 @@ export default function CustomDatePicker({
     });
   };
 
-  const handleSelectDay = (day: number, e: React.MouseEvent) => {
+  const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const mm = String(viewMonth + 1).padStart(2, "0");
-    const dd = String(day).padStart(2, "0");
-    const dateStr = `${viewYear}-${mm}-${dd}`;
+    onChange("");
+    setIsOpen(false);
+  };
+
+  // Month navigation
+  const prevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
+
+  // Generate days grid for currentMonth
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+
+  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+  // Helper to format Date -> "YYYY-MM-DD"
+  const formatDateString = (y: number, m: number, d: number) => {
+    const mm = String(m + 1).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${y}-${mm}-${dd}`;
+  };
+
+  const handleSelectDate = (dateStr: string) => {
     onChange(dateStr);
     setIsOpen(false);
   };
 
-  const handleSelectToday = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange(todayStr);
-    const now = new Date();
-    setViewYear(now.getFullYear());
-    setViewMonth(now.getMonth());
-    setIsOpen(false);
-  };
-
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange("");
-  };
+  const todayStr = formatDateString(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
   return (
     <div ref={containerRef} className={`relative select-none ${className}`}>
-      {/* Input trigger container */}
+      {/* Trigger Box */}
       <div
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="glass-input flex items-center justify-between rounded-lg px-4 py-3 cursor-pointer transition-all hover:border-primary/50"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`glass-input flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer transition-all duration-200 group ${
+          isOpen ? "border-primary/60 shadow-glow" : "hover:border-primary/40"
+        }`}
       >
         <div className="flex items-center gap-3 overflow-hidden">
-          <CalendarIcon className="w-5 h-5 text-primary shrink-0" />
-          <span className={`text-sm truncate ${value ? "text-ink font-medium" : "text-ink-variant/50"}`}>
+          <CalendarIcon className="w-5 h-5 text-primary shrink-0 transition-transform group-hover:scale-110" />
+          <span
+            className={`text-sm truncate font-medium ${
+              value ? "text-ink" : "text-ink-variant/50"
+            }`}
+          >
             {value ? formatDisplay(value) : placeholder}
           </span>
         </div>
-        {value && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="p-1 rounded-full text-ink-variant/50 hover:text-ink hover:bg-ink/5 transition-colors"
-            title="Clear date"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {value && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-1 rounded-full text-ink-variant/50 hover:text-ink hover:bg-surface-low transition-colors"
+              title="Clear date"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Popover Calendar */}
+      {/* Floating Opaque Calendar Popover */}
       {isOpen && (
-        <div
-          className="absolute z-50 mt-2 left-0 sm:left-auto right-0 sm:right-auto w-72 rounded-2xl glass-strong border border-white/80 p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
-          style={{
-            boxShadow: "0 20px 48px rgba(46, 123, 255, 0.18), 0 4px 16px rgba(0, 0, 0, 0.06)",
-          }}
-        >
-          {/* Header Month / Year & Navigation */}
+        <div className="absolute top-full left-0 mt-2 z-50 w-72 bg-white border border-outline-variant/40 rounded-2xl p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          {/* Header Controls */}
           <div className="flex items-center justify-between mb-3 px-1">
-            <h4 className="font-display text-sm font-bold text-ink">
-              {MONTH_NAMES[viewMonth]} <span className="text-primary">{viewYear}</span>
+            <h4 className="font-display font-bold text-sm text-ink">
+              {monthNames[month]} {year}
             </h4>
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={handlePrevMonth}
-                className="p-1.5 rounded-lg hover:bg-primary/10 text-ink-variant hover:text-primary transition-colors"
-                aria-label="Previous month"
+                onClick={prevMonth}
+                className="p-1.5 rounded-lg hover:bg-surface-container text-ink-variant hover:text-ink transition"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 type="button"
-                onClick={handleNextMonth}
-                className="p-1.5 rounded-lg hover:bg-primary/10 text-ink-variant hover:text-primary transition-colors"
-                aria-label="Next month"
+                onClick={nextMonth}
+                className="p-1.5 rounded-lg hover:bg-surface-container text-ink-variant hover:text-ink transition"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -180,79 +158,78 @@ export default function CustomDatePicker({
           </div>
 
           {/* Days of Week Header */}
-          <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
-            {DAYS_OF_WEEK.map((d) => (
-              <span key={d} className="text-[11px] font-semibold text-ink-variant/70">
-                {d}
+          <div className="grid grid-cols-7 gap-1 text-center mb-1">
+            {dayNames.map((day) => (
+              <span key={day} className="text-[11px] font-semibold text-outline font-display py-1">
+                {day}
               </span>
             ))}
           </div>
 
-          {/* Calendar Day Grid */}
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {/* Prev month days */}
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
+            {/* Previous Month Padding Days */}
             {Array.from({ length: firstDayOfMonth }).map((_, i) => {
-              const dayNum = daysInPrevMonth - firstDayOfMonth + 1 + i;
+              const dayNum = daysInPrevMonth - firstDayOfMonth + i + 1;
               return (
                 <span
                   key={`prev-${i}`}
-                  className="h-8 flex items-center justify-center text-xs text-ink-variant/30 rounded-lg"
+                  className="py-2 text-outline-variant/40 pointer-events-none select-none"
                 >
                   {dayNum}
                 </span>
               );
             })}
 
-            {/* Current month days */}
+            {/* Current Month Days */}
             {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const mm = String(viewMonth + 1).padStart(2, "0");
-              const dd = String(day).padStart(2, "0");
-              const dateStr = `${viewYear}-${mm}-${dd}`;
+              const dayNum = i + 1;
+              const dateStr = formatDateString(year, month, dayNum);
               const isSelected = value === dateStr;
-              const isToday = dateStr === todayStr;
-
-              const dateObj = new Date(dateStr + "T00:00:00");
-              const isDisabled = minDateObj ? dateObj < minDateObj : false;
+              const isToday = todayStr === dateStr;
+              const isDisabled = minDate ? dateStr < minDate : false;
 
               return (
                 <button
-                  key={`cur-${day}`}
+                  key={`day-${dayNum}`}
                   type="button"
                   disabled={isDisabled}
-                  onClick={(e) => handleSelectDay(day, e)}
-                  className={`h-8 w-8 mx-auto flex items-center justify-center text-xs font-medium rounded-lg transition-all ${
+                  onClick={() => handleSelectDate(dateStr)}
+                  className={`py-2 rounded-xl transition-all duration-150 relative ${
                     isSelected
-                      ? "bg-primary text-white shadow-md shadow-primary/30 font-bold scale-105"
-                      : isToday
-                      ? "border border-primary/40 text-primary font-bold hover:bg-primary/10"
+                      ? "bg-primary text-white font-bold shadow-glow scale-105 z-10"
                       : isDisabled
-                      ? "text-ink-variant/30 cursor-not-allowed"
-                      : "text-ink hover:bg-primary/10 hover:text-primary"
+                      ? "text-outline-variant/30 cursor-not-allowed"
+                      : "text-ink hover:bg-primary/15 hover:text-primary font-medium"
                   }`}
                 >
-                  {day}
+                  {dayNum}
+                  {isToday && !isSelected && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                  )}
                 </button>
               );
             })}
           </div>
 
-          {/* Footer Actions */}
-          <div className="mt-3 pt-2.5 border-t border-ink/10 flex items-center justify-between text-xs px-1">
+          {/* Bottom Actions */}
+          <div className="flex items-center justify-between pt-3 mt-2 border-t border-outline-variant/30 text-xs font-semibold">
             <button
               type="button"
-              onClick={handleClear}
-              className="text-ink-variant hover:text-danger transition-colors font-medium"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={handleSelectToday}
-              className="text-primary hover:text-primary-dark font-semibold transition-colors"
+              onClick={() => handleSelectDate(todayStr)}
+              className="text-primary hover:underline"
             >
               Today
             </button>
+            {value && (
+              <button
+                type="button"
+                onClick={() => handleSelectDate("")}
+                className="text-ink-variant hover:text-danger"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
       )}

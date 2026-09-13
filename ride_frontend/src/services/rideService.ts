@@ -47,8 +47,8 @@ export const getFilteredRides = async (filters: RideFilters): Promise<Ride[]> =>
  * Creates a new ride offering.
  * Throws on failure — the hook will catch and set an error state.
  */
-export const postRide = async (rideData: NewRidePayload): Promise<Ride> => {
-  return await addRide(rideData);
+export const postRide = async (rideData: NewRidePayload): Promise<void> => {
+  await addRide(rideData);
 };
 
 /**
@@ -59,7 +59,7 @@ export const getUserUpcomingRides = async (): Promise<Ride[]> => {
     return await fetchUpcomingRides();
   } catch (error) {
     console.error("[rideService] Failed to fetch upcoming rides:", error);
-    return [];
+    throw error; // re-throw so useRides hook can surface the error state
   }
 };
 
@@ -71,7 +71,7 @@ export const getUserCompletedRides = async (): Promise<Ride[]> => {
     return await fetchCompletedRides();
   } catch (error) {
     console.error("[rideService] Failed to fetch completed rides:", error);
-    return [];
+    throw error; // re-throw so useRides hook can surface the error state
   }
 };
 

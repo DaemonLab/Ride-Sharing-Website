@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 /**
@@ -22,14 +22,17 @@ export default function SignIn() {
   const message = searchParams.get("message");
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  // Redirect destination — set by ProtectedRoute when the user tried to access a protected page
+  const from = (location.state as { from?: string })?.from ?? "/profile";
   const { isAuthenticated, login, loading } = useAuth();
 
   useEffect(() => {
     if (loading) return;
     if (isAuthenticated) {
-      navigate("/profile", { replace: true });
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, from]);
 
   useEffect(() => {
     setError(message ?? null);
