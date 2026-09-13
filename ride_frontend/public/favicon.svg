@@ -1,26 +1,68 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2E7BFF"/>
-      <stop offset="100%" stop-color="#00CCBB"/>
-    </linearGradient>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <!-- Blue Circular Background -->
+  <circle cx="50" cy="50" r="49" fill="#007BFF" />
 
-  <!-- Rounded square background -->
-  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <!-- Graduation Cap (Mortarboard) -->
+  <g fill="white">
+    <!-- Diamond Top -->
+    <polygon points="50,14 77,24 50,34 23,24" />
+    <!-- Cap Skull Base -->
+    <path d="M 37,28.5 C 37,35.5 63,35.5 63,28.5 L 61,26.5 C 61,33.5 39,33.5 39,26.5 Z" />
+    <!-- Tassel -->
+    <path d="M 71,26 L 71,38 C 71,40 73,42 73,43.5" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    <circle cx="73" cy="44" r="1.5" />
+  </g>
 
-  <!-- Car body silhouette (white, bold at small sizes) -->
-  <path d="M5.5 21.5 L6.5 16 L9.5 12 Q10 11 11 11 L19.5 11 Q20.5 11 21 12 L23.5 16 L26.5 17 L26.5 21.5 Z" fill="white"/>
+  <!-- Car & Passengers Container Group -->
+  <g fill="white">
+    <!-- Main Outer Car Body Structure -->
+    <path d="
+      M 31,39
+      C 37,38 63,38 69,39
+      C 77,39 80,48 83,55
+      C 87,55 89,57 89,61
+      C 89,64 87,66 84,66
+      L 84,79
+      C 84,83 77,83 77,79
+      L 77,77
+      L 23,77
+      L 23,79
+      C 23,83 16,83 16,79
+      L 16,66
+      C 13,66 11,64 11,61
+      C 11,57 13,55 17,55
+      C 20,48 23,39 31,39 Z
+    " />
+  </g>
 
-  <!-- Window cutout (gradient colour to create glass look) -->
-  <path d="M10 12 L9 15.5 L17 15.5 L17 12 Z" fill="url(#bg)" opacity="0.65"/>
-  <path d="M18.2 12 L18.2 15.5 L22.5 15.5 L21 12 Z" fill="url(#bg)" opacity="0.65"/>
+  <!-- Blue Car Windshield Cutout & Inner Features (Transparent to circle background) -->
+  <g fill="#007BFF">
+    <!-- Windshield Inner Frame -->
+    <path d="
+      M 32,43
+      C 37,42 63,42 68,43
+      C 74,43 76,50 78,57
+      L 22,57
+      C 24,50 26,43 32,43 Z
+    " />
 
-  <!-- Rear wheel -->
-  <circle cx="10.5" cy="21.5" r="3.2" fill="white"/>
-  <circle cx="10.5" cy="21.5" r="1.6" fill="url(#bg)"/>
+    <!-- Headlights (Left & Right) -->
+    <rect x="22" y="64" width="10" height="7" rx="3.5" fill="#007BFF" />
+    <rect x="68" y="64" width="10" height="7" rx="3.5" fill="#007BFF" />
+  </g>
 
-  <!-- Front wheel -->
-  <circle cx="21.5" cy="21.5" r="3.2" fill="white"/>
-  <circle cx="21.5" cy="21.5" r="1.6" fill="url(#bg)"/>
+  <!-- White Passenger Silhouettes Inside Blue Windshield -->
+  <g fill="white">
+    <!-- Left Passenger -->
+    <circle cx="36" cy="48.5" r="4.5" />
+    <path d="M 28,57 C 28,52.5 44,52.5 44,57 Z" />
+
+    <!-- Center Passenger -->
+    <circle cx="50" cy="47" r="5" />
+    <path d="M 41,57 C 41,51 59,51 59,57 Z" />
+
+    <!-- Right Passenger -->
+    <circle cx="64" cy="48.5" r="4.5" />
+    <path d="M 56,57 C 56,52.5 72,52.5 72,57 Z" />
+  </g>
 </svg>
