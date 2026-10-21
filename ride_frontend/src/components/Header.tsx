@@ -25,9 +25,9 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 w-full z-50 glass-nav">
-        <div className="container mx-auto px-4 md:px-8">
-        <div className="flex items-center justify-between h-20">
+      <header className="fixed top-0 z-50 w-full px-3 pt-3 sm:px-4">
+        <div className="container mx-auto rounded-2xl border border-white/80 bg-gradient-to-r from-white/90 via-[#f4f8ff]/90 to-[#effffb]/90 px-4 shadow-[0_10px_30px_rgba(46,123,255,0.14)] backdrop-blur-xl md:px-6">
+        <div className="flex h-[4.5rem] items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-glow">
@@ -105,7 +105,7 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden pb-6">
+          <div className="pb-4 md:hidden">
             <nav className="glass-card p-4 flex flex-col gap-1">
               {navItems.map((item) => (
                 <Link
@@ -156,7 +156,7 @@ export default function Header() {
 
     {/* Logout error banner — shown below the fixed header when auth error is set */}
     {showErrorBanner && (
-      <div className="fixed top-20 left-0 w-full z-40 flex justify-center px-4 pt-2 pointer-events-none">
+      <div className="fixed top-[5.25rem] left-0 z-40 flex w-full justify-center px-4 pt-2 pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-3 bg-danger/10 border border-danger/25 text-danger rounded-lg px-4 py-2.5 text-sm shadow-sm max-w-md w-full">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span className="flex-1">{error}</span>

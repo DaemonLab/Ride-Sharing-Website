@@ -1,3 +1,4 @@
+import axios from "axios";
 import { getAuthStatus, logoutRequest } from "../api/authApi";
 import { AuthStatusResponse } from "../types";
 
@@ -23,14 +24,14 @@ const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 export const checkAuthStatus = async (): Promise<AuthStatusResponse> => {
   try {
     return await getAuthStatus();
-  } catch (err: any) {
+  } catch (err: unknown) {
     // If the backend explicitly said "not authenticated" (401 with a body),
     // return that response data rather than a fabricated object.
-    if (err?.response?.data) {
+    if (axios.isAxiosError<AuthStatusResponse>(err) && err.response?.data) {
       return err.response.data as AuthStatusResponse;
     }
     // True network/server failure → treat as unauthenticated
-    console.error("[authService] checkAuthStatus failed:", err?.message);
+    console.error("[authService] checkAuthStatus failed:", err instanceof Error ? err.message : err);
     return { isAuthenticated: false, user: null };
   }
 };

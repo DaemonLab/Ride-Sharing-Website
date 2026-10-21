@@ -112,7 +112,7 @@ export default function BookRide() {
                 <div className="text-sm text-ink-variant space-y-1 mt-2">
                   <p className="flex items-center gap-1.5">
                     <Users className="w-4 h-4" />
-                    Available Seats: {rideDetails.seats}
+                    Passenger seats available: {rideDetails.seats}
                   </p>
                   <p>Status: {rideDetails.isBooked === true ? 'Vehicle Pre-booked' : 'Not Booked Yet'}</p>
                 </div>

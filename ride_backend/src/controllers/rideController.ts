@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import {
-  getPendingRides,
-  getFilteredPendingRides,
+  searchAvailableRides,
   addNewlyCreatedRide,
   getUpcomingRides,
   getCompletedRides,
@@ -9,19 +8,13 @@ import {
   leaveRide,
   getRideGroup,
 } from "../services/rideService.js";
-import { rideCreateSchema, rideFilterSchema } from "../validation/rideSchemas.js";
+import { rideCreateSchema, rideSearchQuerySchema } from "../validation/rideSchemas.js";
 import { asyncHandler } from "../utils/index.js";
 
-// GET /rides/availableRides — all pending rides with available seats
-export const getAllPendingRides = asyncHandler(async (_req: Request, res: Response) => {
-  const result = await getPendingRides();
-  res.status(200).json({ success: true, data: result });
-});
-
-// POST /rides/filteredAvailableRides — pending rides filtered by source/destination/date/time
-export const getAllFilteredRides = asyncHandler(async (req: Request, res: Response) => {
-  const filters = rideFilterSchema.parse(req.body); // throws ZodError on invalid input -> errorHandler
-  const result = await getFilteredPendingRides(filters);
+// GET /rides — paginated, server-side search for available rides
+export const getAvailableRidesPage = asyncHandler(async (req: Request, res: Response) => {
+  const query = rideSearchQuerySchema.parse(req.query);
+  const result = await searchAvailableRides(query);
   res.status(200).json({ success: true, data: result });
 });
 

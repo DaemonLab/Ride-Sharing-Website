@@ -1,25 +1,57 @@
 import axiosInstance from "./axiosInstance";
-import { Ride, RideFilters, NewRidePayload } from "../types";
+import { PaginatedRides, Ride, RideSearchParams, NewRidePayload } from "../types";
+
+interface RawRide {
+  id?: string | number;
+  rideID?: number;
+  userId?: string | number;
+  createdBy?: number;
+  userName?: string;
+  name?: string;
+  creatorName?: string;
+  pickup?: string;
+  source?: string;
+  dropoff?: string;
+  destination?: string;
+  dateTime?: string;
+  date?: string;
+  time?: string;
+  seatsAvailable?: number;
+  seats?: number;
+  estimatedCost?: number;
+  totalCost?: number | null;
+  from?: string;
+  to?: string;
+  price?: number | null;
+  vehicle?: string;
+  vehicleType?: string;
+  isBooked?: boolean;
+}
 
 // Keep the UI model stable while the backend uses database-oriented names.
 // All ride responses pass through this boundary instead of being remapped in pages.
-const normalizeRide = (ride: any): Ride => ({
+const normalizeRide = (ride: RawRide): Ride => ({
   ...ride,
   id: String(ride.id ?? ride.rideID),
   userId: String(ride.userId ?? ride.createdBy),
   userName: ride.userName ?? ride.name ?? ride.creatorName ?? "",
-  pickup: ride.pickup ?? ride.source,
-  dropoff: ride.dropoff ?? ride.destination,
+  pickup: ride.pickup ?? ride.source ?? "",
+  dropoff: ride.dropoff ?? ride.destination ?? "",
   dateTime: ride.dateTime ?? `${ride.date ?? ""}T${ride.time ?? "00:00"}`,
   seatsAvailable: ride.seatsAvailable ?? ride.seats ?? 0,
-  estimatedCost: ride.estimatedCost ?? ride.totalCost,
-  from: ride.from ?? ride.source,
-  to: ride.to ?? ride.destination,
+  estimatedCost: ride.estimatedCost ?? ride.totalCost ?? undefined,
+  from: ride.from ?? ride.source ?? "",
+  to: ride.to ?? ride.destination ?? "",
   seats: ride.seats ?? ride.seatsAvailable,
   price: (ride.price != null && Number(ride.price) > 0)
     ? Number(ride.price)
     : (ride.totalCost != null && Number(ride.totalCost) > 0 ? Number(ride.totalCost) : undefined),
   vehicle: ride.vehicle ?? ride.vehicleType,
+  rideType: ride.vehicle === "rickshaw" || ride.vehicle === "cab" || ride.vehicle === "other"
+    ? ride.vehicle
+    : ride.vehicleType === "rickshaw" || ride.vehicleType === "cab" || ride.vehicleType === "other"
+      ? ride.vehicleType
+      : "other",
 });
 
 /**
@@ -31,20 +63,13 @@ const normalizeRide = (ride: any): Ride => ({
  */
 
 /** Fetch all rides that are currently pending/available */
-export const fetchAvailableRides = async (): Promise<Ride[]> => {
-  const response = await axiosInstance.get<{ success: boolean; data: Ride[] }>("/rides/availableRides");
-  return (response.data.data ?? []).map(normalizeRide);
-};
-
-/** Fetch rides filtered by from/to/date criteria (time is handled client-side) */
-export const fetchFilteredRides = async (filters: RideFilters): Promise<Ride[]> => {
-  const response = await axiosInstance.post<{ success: boolean; data: Ride[] }>("/rides/filteredAvailableRides", {
-    source: filters.from,
-    destination: filters.to,
-    date: filters.date,
-    // time intentionally omitted — exact-match is timezone-unsafe; client-side ±60min handles it
-  });
-  return (response.data.data ?? []).map(normalizeRide);
+/** Fetch one server-filtered page of available rides. */
+export const searchAvailableRides = async (params: RideSearchParams): Promise<PaginatedRides> => {
+  const response = await axiosInstance.get<{ success: boolean; data: PaginatedRides }>("/rides", { params });
+  return {
+    items: (response.data.data.items ?? []).map(normalizeRide),
+    meta: response.data.data.meta,
+  };
 };
 
 /** Post a new ride offering — backend returns no data, just a success message */

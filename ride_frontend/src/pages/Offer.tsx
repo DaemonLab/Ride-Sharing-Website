@@ -64,7 +64,7 @@ export default function Offer() {
     }
 
     if (!rideDetails.seats || rideDetails.seats < 1 || rideDetails.seats > 20) {
-      setValidationError("Available seats must be between 1 and 20.");
+      setValidationError("Available passenger seats must be between 1 and 20.");
       return false;
     }
 
@@ -213,7 +213,7 @@ export default function Offer() {
               </div>
             </div>
 
-            {/* Vehicle Type & Available Seats */}
+            {/* Vehicle Type & Passenger Seats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-variant uppercase tracking-wider mb-1.5 px-1">
@@ -231,7 +231,7 @@ export default function Offer() {
 
               <div>
                 <label className="block text-xs font-semibold text-ink-variant uppercase tracking-wider mb-1.5 px-1">
-                  Available Seats
+                  Available Passenger Seats
                 </label>
                 <div className="glass-input flex items-center rounded-lg px-4 py-3 transition-colors">
                   <Users className="w-5 h-5 text-primary mr-3 shrink-0" />
@@ -253,6 +253,9 @@ export default function Offer() {
                     max={20}
                   />
                 </div>
+                <p className="mt-1.5 px-1 text-xs text-ink-variant">
+                  Seats for riders joining you; your own seat as the offerer is not included.
+                </p>
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-import { User, Clock, MapPin, Mail, Calendar, Car, MessageCircle, Check, X, Plus, AlertCircle } from "lucide-react";
+import { Clock, MapPin, Mail, Calendar, Car, MessageCircle, Check, X, Plus, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { useProfile } from "../hooks/useProfile";
 import { useRides } from "../hooks/useRides";
@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { cancelUserRide, leaveUserRide } from "../services/rideService";
 import { Link, useNavigate } from "react-router-dom";
 import { useRideRequests } from "../hooks/useRideRequests";
-import { HandleRequestPayload, RideRequest, User as UserType } from "../types";
+import { HandleRequestPayload, Ride, RideRequest, User as UserType } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmModal from "../components/ConfirmModal";
 
@@ -107,7 +107,7 @@ export default function Profile() {
 
   const isLoading = profileLoading || ridesLoading;
   const studentDetails = getStudentDetails(profile?.email ?? user?.email);
-  const joinedDate = getJoinedDate(profile?.email ?? user?.email, (profile as any)?.createdAt ?? (profile as any)?.joinedDate);
+  const joinedDate = getJoinedDate(profile?.email ?? user?.email);
   const initials = getInitials(profile?.name ?? user?.name);
 
   const handleCancelRideClick = (rideID: number) => {
@@ -189,15 +189,14 @@ export default function Profile() {
 // ---------------------------------------------------------------------------
 
 interface RideRowProps {
-  ride: any;
-  index: number;
+  ride: Ride;
   completed?: boolean;
   user: UserType | null;
   onCancel: (rideID: number) => void;
   onLeave: (rideID: number) => void;
 }
 
-function RideRow({ ride, index, completed, user, onCancel, onLeave }: RideRowProps) {
+function RideRow({ ride, completed, user, onCancel, onLeave }: RideRowProps) {
   return (
     <div
       className="bg-white rounded-xl p-5 border border-[#e7e9f2] hover:border-[#3b6ef0]/40 transition-all duration-200 shadow-sm"
@@ -370,7 +369,7 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
   return (
     <div className="min-h-screen bg-[#f6f7fb] text-[#12172b]">
       {/* Page Header Bar */}
-      <div className="max-w-[1080px] mx-auto px-6 pt-24 pb-4 flex items-center justify-between flex-wrap gap-4">
+      <div className="max-w-[1080px] mx-auto px-4 pt-24 pb-4 flex items-center justify-between flex-wrap gap-4 sm:px-6">
         <div className="text-xs text-[#8c93a8] font-medium">
           Account <span className="mx-1.5">/</span> <b className="text-[#5a6178] font-semibold">Profile</b>
         </div>
@@ -386,7 +385,7 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
 
       {/* Action / Error / Success Banner */}
       {(actionError || actionSuccess) && (
-        <div className="max-w-[1080px] mx-auto px-6 mb-4">
+        <div className="max-w-[1080px] mx-auto px-4 mb-4 sm:px-6">
           <div className={`rounded-xl p-3.5 text-xs font-medium flex items-center justify-between border ${
             actionError
               ? "bg-[#fef2f2] border-[#fee2e2] text-[#dc2626]"
@@ -404,7 +403,7 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
       )}
 
       {/* Main 2-Column Content */}
-      <main className="max-w-[1080px] mx-auto px-6 pb-20 grid grid-cols-1 md:grid-cols-[296px_1fr] gap-5 items-start">
+      <main className="max-w-[1080px] mx-auto px-4 pb-20 grid grid-cols-1 gap-5 items-start sm:px-6 md:grid-cols-[296px_1fr]">
         {/* LEFT: Profile Summary Card */}
         <aside className="bg-white rounded-2xl border border-[#e7e9f2] shadow-sm overflow-hidden md:sticky md:top-24">
           <div className="h-[72px] bg-gradient-to-r from-[#2f5df0] via-[#6a5cf0] to-[#0fb99e]" />
@@ -575,7 +574,7 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
             </div>
 
             {/* Tab Panel Content */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <AnimatePresence mode="wait">
                 {activeTab === "rides" && (
                   <motion.div
@@ -605,11 +604,10 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
                         </button>
                       </div>
                     ) : (
-                      upcomingRides.map((ride, index) => (
+                      upcomingRides.map((ride) => (
                         <RideRow
-                          key={ride.id ?? index}
+                          key={ride.id}
                           ride={ride}
-                          index={index}
                           user={user}
                           onCancel={handleCancelRideClick}
                           onLeave={handleLeaveRideClick}
@@ -640,11 +638,10 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
                         </p>
                       </div>
                     ) : (
-                      completedRides.map((ride, index) => (
+                      completedRides.map((ride) => (
                         <RideRow
-                          key={ride.id ?? index}
+                          key={ride.id}
                           ride={ride}
-                          index={index}
                           completed
                           user={user}
                           onCancel={handleCancelRideClick}

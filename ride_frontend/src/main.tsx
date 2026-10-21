@@ -1,5 +1,6 @@
 import { StrictMode, Component, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { NuqsAdapter } from 'nuqs/adapters/react';
 import App from './App.tsx';
 import './index.css';
 
@@ -23,8 +24,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <NuqsAdapter>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </NuqsAdapter>
   </StrictMode>
 );

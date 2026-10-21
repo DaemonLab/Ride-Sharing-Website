@@ -1,6 +1,5 @@
 import {
-  fetchAvailableRides,
-  fetchFilteredRides,
+  searchAvailableRides,
   addRide,
   fetchUpcomingRides,
   fetchCompletedRides,
@@ -9,7 +8,7 @@ import {
   fetchRideGroup,
   RideGroup,
 } from "../api/rideApi";
-import { Ride, RideFilters, NewRidePayload } from "../types";
+import { PaginatedRides, Ride, RideSearchParams, NewRidePayload } from "../types";
 
 /**
  * Service Layer — Rides
@@ -17,31 +16,10 @@ import { Ride, RideFilters, NewRidePayload } from "../types";
  * Hooks call service functions — never the API layer directly.
  */
 
-/**
- * Returns all available (pending) rides from the backend.
- * Returns an empty array on error so the UI never breaks.
- */
-export const getAvailableRides = async (): Promise<Ride[]> => {
-  try {
-    return await fetchAvailableRides();
-  } catch (error) {
-    console.error("[rideService] Failed to fetch available rides:", error);
-    return [];
-  }
-};
-
-/**
- * Returns rides filtered by from/to/date/time criteria.
- * Falls back to fetching all rides if the filtered endpoint fails.
- */
-export const getFilteredRides = async (filters: RideFilters): Promise<Ride[]> => {
-  try {
-    return await fetchFilteredRides(filters);
-  } catch (error) {
-    console.error("[rideService] Failed to fetch filtered rides:", error);
-    return [];
-  }
-};
+// Search failures intentionally propagate so the page can show an error rather
+// than presenting a failed request as an empty result set.
+export const searchRides = (params: RideSearchParams): Promise<PaginatedRides> =>
+  searchAvailableRides(params);
 
 /**
  * Creates a new ride offering.

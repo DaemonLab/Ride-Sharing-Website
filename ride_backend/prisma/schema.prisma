@@ -43,6 +43,8 @@ model rides {
   creator        users      @relation("UserRides", fields: [createdBy], references: [id], onDelete: Cascade)
   requests       requests[]
   groupChats     groupChat[]
+
+  @@index([rideStatus, date, time, rideID])
 }
 
 model requests {

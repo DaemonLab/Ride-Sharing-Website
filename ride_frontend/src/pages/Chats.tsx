@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useRides } from '../hooks/useRides';
 import { Link } from 'react-router-dom';
+import { MessageCircle } from 'lucide-react';
+import Button from '../components/Button';
 
 function Chat() {
   const { rideID } = useParams<{ rideID: string }>();
@@ -18,7 +20,16 @@ function Chat() {
           {loading ? (
             <p className="text-ink-variant">Loading rides...</p>
           ) : upcomingRides.length === 0 ? (
-            <p className="text-ink-variant">You have no upcoming rides with chat access.</p>
+            <section className="glass-card rounded-2xl px-5 py-12 text-center sm:px-10">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <MessageCircle className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <h2 className="font-display text-xl font-semibold text-ink">No ride chats yet</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-variant">
+                Chats become available after you offer a ride or your request to join one is accepted.
+              </p>
+              <Link to="/find" className="mt-6 inline-block"><Button>Find a ride</Button></Link>
+            </section>
           ) : (
             <div className="space-y-3">{upcomingRides.map((ride) => (
               <Link key={ride.id} to={`/chat/${ride.id}`} className="block glass-card rounded-lg p-4 hover:border-primary/40">

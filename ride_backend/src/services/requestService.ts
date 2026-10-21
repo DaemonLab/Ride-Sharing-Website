@@ -1,5 +1,7 @@
 import { prisma } from "../config/prisma.js";
+import { Prisma } from "@prisma/client";
 import { logger } from "../config/logger.js";
+import { completeExpiredRides } from "./rideService.js";
 
 // Small helper to create an error with a statusCode attached.
 // errorHandler in errorMiddleware.ts reads (error as any).statusCode to set the HTTP status.
@@ -20,7 +22,10 @@ function createError(message: string, statusCode = 400) {
  * requests could both pass the seat-availability check before either is committed.
  */
 export async function handleUserSentRequest({ rideID, requestBy }: { rideID: number; requestBy: number }) {
-  return prisma.$transaction(async (tx) => {
+  // A direct request must not bypass lazy expiry performed by listing endpoints.
+  await completeExpiredRides();
+  try {
+    return await prisma.$transaction(async (tx) => {
     // Check for an existing request for this ride by this user
     const existing = await tx.requests.findFirst({ where: { rideID, requestBy } });
 
@@ -53,8 +58,17 @@ export async function handleUserSentRequest({ rideID, requestBy }: { rideID: num
     });
 
     logger.info(`Ride request created: rideID=${rideID} requestBy=${requestBy}`);
-    return "RequestMade";
-  });
+      return "RequestMade";
+    });
+  } catch (error) {
+    // The unique [rideID, requestBy] constraint is the final guard against
+    // duplicate concurrent submissions. The winning transaction created the
+    // pending request, so the second caller receives an idempotent response.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return "Pending";
+    }
+    throw error;
+  }
 }
 
 /**
@@ -66,13 +80,25 @@ export async function handleUserSentRequest({ rideID, requestBy }: { rideID: num
 export async function handleUserReceivedRequest({
   rideID, requestBy, flag, ownerID,
 }: { rideID: number; requestBy: number; flag: "Accepted" | "Rejected"; ownerID: number }) {
+  await completeExpiredRides();
   await prisma.$transaction(async (tx) => {
-    const ride = await tx.rides.findUnique({ where: { rideID }, select: { createdBy: true } });
+    const ride = await tx.rides.findUnique({ where: { rideID }, select: { createdBy: true, rideStatus: true, seatsAvailable: true } });
     if (!ride) throw createError(`Ride ${rideID} not found`, 404);
     if (ride.createdBy !== ownerID) throw createError("Only the ride owner can handle requests", 403);
+    if (ride.rideStatus !== "Pending" || (ride.seatsAvailable <= 0 && flag === "Accepted")) {
+      throw createError("This ride is no longer accepting requests");
+    }
 
-    const request = await tx.requests.findFirst({ where: { rideID, requestBy, requestStatus: "Pending" } });
+    const request = await tx.requests.findFirst({ where: { rideID, requestBy } });
     if (!request) throw createError("Pending request not found", 404);
+
+    // Claim the pending request first. updateMany makes the state transition
+    // conditional, so two concurrent decisions cannot both consume a seat.
+    const requestUpdate = await tx.requests.updateMany({
+      where: { id: request.id, requestStatus: "Pending" },
+      data: { requestStatus: flag },
+    });
+    if (requestUpdate.count !== 1) throw createError("Pending request not found", 409);
 
     if (flag === "Accepted") {
       const seatUpdate = await tx.rides.updateMany({
@@ -81,8 +107,6 @@ export async function handleUserReceivedRequest({
       });
       if (seatUpdate.count !== 1) throw createError("This ride has no available seats");
     }
-
-    await tx.requests.update({ where: { id: request.id }, data: { requestStatus: flag } });
     logger.info(`Request ${flag}: rideID=${rideID} requestBy=${requestBy} ownerID=${ownerID}`);
   });
 }

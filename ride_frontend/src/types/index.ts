@@ -4,6 +4,8 @@ export type RideType = "rickshaw" | "cab" | "other";
 
 export interface Ride {
   id: string;
+  rideID?: number;
+  createdBy?: number;
   userId: string;
   userName: string;
   pickup: string;
@@ -24,12 +26,27 @@ export interface Ride {
   isBooked?: boolean;
 }
 
-/** Filters sent to POST /rides/filteredAvailableRides */
-export interface RideFilters {
+export interface RideSearchParams {
   from?: string;
   to?: string;
   date?: string;
   time?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface RideSearchMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+export interface PaginatedRides {
+  items: Ride[];
+  meta: RideSearchMeta;
 }
 
 /** Payload for POST /rides/addRide */

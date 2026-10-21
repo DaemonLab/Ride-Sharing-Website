@@ -20,5 +20,9 @@ export const getRideMembersHttp = asyncHandler(async (req: Request, res: Respons
     return;
   }
   const members = await getRideMembers({ rideID });
+  if (!members.some((member) => member.id === req.session.user!.id)) {
+    res.status(403).json({ success: false, message: "Only ride members can view this group" });
+    return;
+  }
   res.status(200).json({ success: true, data: members });
 });

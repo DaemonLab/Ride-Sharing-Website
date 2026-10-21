@@ -49,8 +49,7 @@ export async function getRideMembers({ rideID }: { rideID: number }): Promise<Ri
  */
 export async function addMessage({ rideID, user_id, name, message, timestamp }: MessageInput): Promise<void> {
   const ts = timestamp ?? new Date();
-  const messageTime = ts.toTimeString().split(" ")[0];
-  const messageDate = ts.toISOString().split("T")[0];
+  const [messageDate, messageTime] = ts.toISOString().replace("Z", "").split("T");
 
   await prisma.groupChat.create({
     data: {
@@ -81,6 +80,6 @@ export async function getOlderMessages({ rideID }: { rideID: number }): Promise<
     user_id: String(m.messageBy),
     name: m.sender?.name ?? m.rideOwner ?? "Unknown",
     message: m.message,
-    timestamp: `${m.messageDate} ${m.messageTime}`,
+    timestamp: `${m.messageDate}T${m.messageTime}Z`,
   }));
 }

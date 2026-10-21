@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Loader, Send, ChevronDown, Users } from 'lucide-react';
+import { Loader, Send, ChevronDown, Users, MessageCircle } from 'lucide-react';
 
 interface RideChatProps {
   rideID: string;
@@ -141,7 +141,15 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
             className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
           >
             {messages.length === 0 ? (
-              <p className="text-ink-variant text-center">No messages yet. Start the conversation!</p>
+              <div className="flex h-full min-h-48 flex-col items-center justify-center px-4 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <MessageCircle className="h-6 w-6" aria-hidden="true" />
+                </div>
+                <h3 className="font-display text-lg font-semibold text-ink">Start the conversation</h3>
+                <p className="mt-1 max-w-sm text-sm leading-relaxed text-ink-variant">
+                  No messages yet. Say hello and coordinate the pickup with your ride group.
+                </p>
+              </div>
             ) : (
               messages.map((msg, index) => {
                 const isSelf = msg.user_id === userID;

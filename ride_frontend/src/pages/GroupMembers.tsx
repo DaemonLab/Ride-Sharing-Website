@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { User, MapPin, Calendar, Clock, MessageCircle } from "lucide-react";
 import Button from "../components/Button";
@@ -11,7 +11,7 @@ export default function GroupMembers() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchGroup = () => {
+  const fetchGroup = useCallback(() => {
     const id = Number(rideID);
     if (!Number.isInteger(id) || id <= 0) {
       setError("Invalid ride group.");
@@ -23,9 +23,9 @@ export default function GroupMembers() {
     getRideGroup(id)
       .then((data) => { setGroup(data); setLoading(false); })
       .catch(() => { setError("Unable to load this ride group."); setLoading(false); });
-  };
+  }, [rideID]);
 
-  useEffect(() => { fetchGroup(); }, [rideID]);
+  useEffect(() => { fetchGroup(); }, [fetchGroup]);
 
   if (loading) {
     return (
@@ -64,9 +64,9 @@ export default function GroupMembers() {
             <div className="flex items-center text-ink font-medium"><MapPin className="w-5 h-5 text-primary mr-2" />{group.source} → {group.destination}</div>
             <div className="flex gap-4 text-sm text-ink-variant"><span className="flex items-center"><Calendar className="w-4 h-4 mr-1" />{group.date}</span><span className="flex items-center"><Clock className="w-4 h-4 mr-1" />{group.time}</span></div>
           </div>
-          <div className="flex justify-between items-center text-sm text-ink-variant pt-3 mt-3 border-t border-white/60">
+          <div className="flex flex-col gap-2 pt-3 mt-3 text-sm text-ink-variant border-t border-white/60 sm:flex-row sm:items-center sm:justify-between">
             <span>{group.vehicleType}</span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span>{passengersFilled}/{totalSeats} passenger seats taken</span>
               {isFull && (
                 <span className="px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/30 text-xs font-bold uppercase tracking-wide">
@@ -82,11 +82,11 @@ export default function GroupMembers() {
               <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
                 {member.picture ? <img src={member.picture} alt="" className="w-full h-full object-cover" /> : <User className="w-6 h-6 text-primary" />}
               </div>
-              <div className="ml-4"><h2 className="font-medium text-ink">{member.name ?? member.email}</h2><p className="text-sm text-ink-variant">Ride member</p></div>
+              <div className="min-w-0 ml-4"><h2 className="font-medium text-ink break-words">{member.name ?? member.email}</h2><p className="text-sm text-ink-variant">Ride member</p></div>
             </div>
           ))}
         </div>
-        <div className="max-w-2xl mx-auto mt-8 flex gap-3">
+        <div className="max-w-2xl mx-auto mt-8 flex flex-col gap-3 sm:flex-row">
           <Link to={`/chat/${group.rideID}`} className="flex-1"><Button className="w-full"><MessageCircle className="w-5 h-5" /> Open chat</Button></Link>
           <Link to="/profile" className="flex-1"><Button variant="secondary" className="w-full">Back to profile</Button></Link>
         </div>

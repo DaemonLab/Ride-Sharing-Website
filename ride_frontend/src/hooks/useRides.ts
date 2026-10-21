@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  getAvailableRides,
-  getFilteredRides,
   postRide,
   getUserUpcomingRides,
   getUserCompletedRides,
 } from "../services/rideService";
-import { Ride, RideFilters, NewRidePayload } from "../types";
+import { Ride, NewRidePayload } from "../types";
 
 /**
  * Hook Layer — useRides
@@ -23,9 +21,7 @@ import { Ride, RideFilters, NewRidePayload } from "../types";
  * Usage in Offer.tsx:
  *   const { submitRide, loading, error } = useRides();
  */
-export function useRides(mode: "find" | "profile" | "none" = "none") {
-  // Rides shown on the Find page
-  const [rides, setRides] = useState<Ride[]>([]);
+export function useRides(mode: "profile" | "none" = "none") {
   // Rides for the Profile page
   const [upcomingRides, setUpcomingRides] = useState<Ride[]>([]);
   const [completedRides, setCompletedRides] = useState<Ride[]>([]);
@@ -34,25 +30,6 @@ export function useRides(mode: "find" | "profile" | "none" = "none") {
   const [error, setError] = useState<string | null>(null);
   // Tracks whether a ride post (Offer.tsx) succeeded
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
-
-  /**
-   * Fetch all available rides, optionally applying filters.
-   * Called from Find.tsx on mount and on filter change.
-   */
-  const fetchRides = useCallback(async (filters?: RideFilters) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = filters && Object.values(filters).some(Boolean)
-        ? await getFilteredRides(filters)
-        : await getAvailableRides();
-      setRides(data);
-    } catch {
-      setError("Failed to load rides. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   /**
    * Fetch the current user's upcoming + completed rides.
@@ -89,7 +66,7 @@ export function useRides(mode: "find" | "profile" | "none" = "none") {
       return true;
     } catch (err: unknown) {
       // Surface the actual backend error message (e.g. Zod validation details)
-      const msg = (err as any)?.response?.data?.message;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg ?? "Failed to post ride. Please try again.");
       return false;
     } finally {
@@ -99,14 +76,10 @@ export function useRides(mode: "find" | "profile" | "none" = "none") {
 
   // Auto-fetch on mount based on which page is using the hook
   useEffect(() => {
-    if (mode === "find") fetchRides();
     if (mode === "profile") fetchProfileRides();
-  }, [mode, fetchRides, fetchProfileRides]);
+  }, [mode, fetchProfileRides]);
 
   return {
-    // Find page
-    rides,
-    fetchRides,
     // Profile page
     upcomingRides,
     completedRides,

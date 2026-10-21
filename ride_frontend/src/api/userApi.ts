@@ -1,5 +1,11 @@
 import axiosInstance from "./axiosInstance";
-// import { UserProfile } from "../types";
+
+interface UserProfileResponse {
+  id: number;
+  name: string | null;
+  email: string;
+  picture: string | null;
+}
 
 /**
  * API Layer — User
@@ -7,7 +13,7 @@ import axiosInstance from "./axiosInstance";
  */
 
 /** Fetch the currently authenticated user's profile */
-export const getUserProfile = async (): Promise<any> => {
-  const response = await axiosInstance.get<{ success: boolean; data: any }>("/user/profile");
-  return response.data.data ?? response.data;
+export const getUserProfile = async (): Promise<UserProfileResponse> => {
+  const response = await axiosInstance.get<{ success: boolean; data: UserProfileResponse }>("/user/profile");
+  return response.data.data;
 };
