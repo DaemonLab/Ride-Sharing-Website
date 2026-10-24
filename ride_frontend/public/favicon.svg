@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2E7BFF"/>
+      <stop offset="100%" stop-color="#00CCBB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+
+  <!-- Car body silhouette (white, bold at small sizes) -->
+  <path d="M5.5 21.5 L6.5 16 L9.5 12 Q10 11 11 11 L19.5 11 Q20.5 11 21 12 L23.5 16 L26.5 17 L26.5 21.5 Z" fill="white"/>
+
+  <!-- Window cutout (gradient colour to create glass look) -->
+  <path d="M10 12 L9 15.5 L17 15.5 L17 12 Z" fill="url(#bg)" opacity="0.65"/>
+  <path d="M18.2 12 L18.2 15.5 L22.5 15.5 L21 12 Z" fill="url(#bg)" opacity="0.65"/>
+
+  <!-- Rear wheel -->
+  <circle cx="10.5" cy="21.5" r="3.2" fill="white"/>
+  <circle cx="10.5" cy="21.5" r="1.6" fill="url(#bg)"/>
+
+  <!-- Front wheel -->
+  <circle cx="21.5" cy="21.5" r="3.2" fill="white"/>
+  <circle cx="21.5" cy="21.5" r="1.6" fill="url(#bg)"/>
+</svg>
