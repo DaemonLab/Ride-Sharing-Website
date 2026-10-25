@@ -45,20 +45,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Run on mount to restore any existing session (e.g. page refresh)
+  // Single effect — runs on mount and whenever the query string changes.
+  // On every mount we always check auth (restores session after page refresh).
+  // On subsequent location.search changes we only re-check if ?status= is present
+  // (i.e. the Google OAuth redirect just landed).
+  // This avoids two concurrent checkAuthStatus() calls on the initial render
+  // when the URL is already /profile?status=success, which caused a race condition
+  // where loading briefly went false with isAuthenticated=false → ProtectedRoute
+  // kicked the user back to /signin.
   useEffect(() => {
     checkAuthStatusHandler();
-  }, []);
-
-  // Re-check auth whenever the URL has ?status=success or ?status=already_authenticated.
-  // This fires when Google OAuth redirects back to /profile?status=success,
-  // which is the ONLY reliable way to know the login just completed.
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const status = params.get("status");
-    if (status === "success" || status === "already_authenticated") {
-      checkAuthStatusHandler();
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
   /** Redirects to Google OAuth — no API call, just a browser navigation */

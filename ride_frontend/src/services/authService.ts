@@ -2,8 +2,6 @@ import axios from "axios";
 import { getAuthStatus, logoutRequest } from "../api/authApi";
 import { AuthStatusResponse } from "../types";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-
 /**
  * Service Layer — Auth
  * Contains business logic around authentication.
@@ -46,8 +44,10 @@ export const logoutUser = async (): Promise<void> => {
 
 /**
  * Redirects the browser to the Google OAuth login page on the backend.
- * This is a hard redirect, not an API call.
+ * This is a hard browser navigation (not an axios call), so we read the
+ * env variable directly here rather than going through axiosInstance.
  */
 export const redirectToGoogleLogin = (): void => {
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
   window.location.href = `${backendUrl}/auth/google`;
 };

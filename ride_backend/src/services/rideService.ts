@@ -174,7 +174,7 @@ export async function addNewlyCreatedRide(data: {
   } catch (error) {
     const err = error as Error;
     logger.error(`Error adding newly created ride: ${err.message}`);
-    throw new Error(err.message);
+    throw error; // re-throw original so statusCode on the error is preserved
   }
 }
 
@@ -231,7 +231,7 @@ export async function getUpcomingRides({ userID }: { userID: number }) {
   } catch (error) {
     const err = error as Error;
     logger.error(`Error fetching upcoming rides: ${err.message}`);
-    throw new Error(err.message);
+    throw error;
   }
 }
 
@@ -260,7 +260,7 @@ export async function getCompletedRides({ userID }: { userID: number }) {
   } catch (error) {
     const err = error as Error;
     logger.error(`Error fetching completed rides: ${err.message}`);
-    throw new Error(err.message);
+    throw error;
   }
 }
 
