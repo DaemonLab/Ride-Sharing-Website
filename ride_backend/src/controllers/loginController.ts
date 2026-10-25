@@ -14,12 +14,7 @@ const SCOPES = [
 const oauthClient = new OAuth2Client(env.googleClientId, env.googleClientSecret, env.redirectUrl);
 
 // GET /auth/google — redirect user to Google OAuth consent screen
-export const loginRedirect = (req: Request, res: Response) => {
-  if (req.session.user) {
-    res.redirect(`${env.frontendUrl}/profile?status=already_authenticated`);
-    return;
-  }
-
+export const loginRedirect = (_req: Request, res: Response) => {
   const authUrl = oauthClient.generateAuthUrl({
     access_type: "offline",
     prompt: "select_account",

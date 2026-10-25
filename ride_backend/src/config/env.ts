@@ -21,7 +21,7 @@ export const env = {
   databaseUrl:     process.env.DATABASE_URL!,
   databaseSsl:     process.env.DATABASE_SSL !== "false",
   sessionSecret:   process.env.SESSION_SECRET!,
-  frontendUrl:     process.env.FRONTEND_URL!,
+  frontendUrl:     (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, ""),
   googleClientId:  process.env.GOOGLE_CLIENT_ID!,
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET!,
   redirectUrl:     process.env.REDIRECT_URL!,
