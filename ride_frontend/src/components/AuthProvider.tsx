@@ -36,6 +36,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { isAuthenticated: authed, user: userData } = await checkAuthStatus();
       setIsAuthenticated(authed);
       setUser(userData);
+      if (authed && location.search.includes("status=")) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     } catch {
       setError("Auth check failed");
       setIsAuthenticated(false);

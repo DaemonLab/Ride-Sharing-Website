@@ -8,7 +8,12 @@ let io: Server;
 export function initSocket(server: HttpServer, sessionMiddleware?: RequestHandler) {
   io = new Server(server, {
     cors: {
-      origin: env.frontendUrl,
+      origin: [
+        env.frontendUrl,
+        "https://ride-sharing-website.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+      ],
       methods: ["GET", "POST"],
       credentials: true,
     },

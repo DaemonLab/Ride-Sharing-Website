@@ -29,8 +29,30 @@ const app = express();
 // Trust the first reverse proxy (needed for secure cookies on Render/Railway)
 if (env.cookieSecure) app.set("trust proxy", 1);
 
+// Normalized allowed origins
+const allowedOrigins = new Set([
+  env.frontendUrl,
+  "https://ride-sharing-website.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+]);
+
 // Allow requests from the frontend origin with cookies
-app.use(cors({ origin: env.frontendUrl, credentials: true }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.replace(/\/+$/, "");
+      if (allowedOrigins.has(cleanOrigin) || cleanOrigin.endsWith(".vercel.app")) {
+        // Echo the exact origin sent by the browser to avoid trailing-slash or case mismatches
+        return callback(null, origin);
+      }
+      return callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
@@ -48,6 +70,7 @@ const sessionMiddleware = session({
     secure: env.cookieSecure,
     httpOnly: true,               // JS on the page cannot read this cookie
     sameSite: env.cookieSameSite, // CSRF protection
+    partitioned: env.cookieSecure && env.cookieSameSite === "none",
   },
 });
 
