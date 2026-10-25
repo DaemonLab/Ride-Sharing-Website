@@ -43,4 +43,15 @@ if (env.nodeEnv === "production" && !env.cookieSecure) {
   );
 }
 
+// When the frontend and backend are on different domains (Vercel + Render),
+// session cookies require SameSite=None. Without it, browsers silently block
+// the cookie on cross-origin requests and every /auth/status call returns 401.
+if (env.nodeEnv === "production" && env.cookieSameSite !== "none") {
+  throw new Error(
+    "COOKIE_SAME_SITE must be set to 'none' in production when frontend and backend " +
+    "are on different domains (e.g. Vercel + Render). " +
+    "Add COOKIE_SAME_SITE=none to your environment variables."
+  );
+}
+
 

@@ -2,8 +2,6 @@ import axios from "axios";
 import { getAuthStatus, logoutRequest } from "../api/authApi";
 import { AuthStatusResponse } from "../types";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-
 /**
  * Service Layer — Auth
  * Contains business logic around authentication.

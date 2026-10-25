@@ -46,11 +46,14 @@ export const googleCallback = async (req: Request, res: Response) => {
   }
 
   try {
-    oauthClient.setCredentials({});
-    const { tokens } = await oauthClient.getToken(code);
-    oauthClient.setCredentials(tokens);
+    // Create a fresh client per callback — the singleton client's setCredentials()
+    // mutates shared state, which can cause concurrent login flows (two open tabs)
+    // to corrupt each other's token exchange.
+    const callbackClient = new OAuth2Client(env.googleClientId, env.googleClientSecret, env.redirectUrl);
+    const { tokens } = await callbackClient.getToken(code);
+    callbackClient.setCredentials(tokens);
 
-    const ticket = await oauthClient.verifyIdToken({
+    const ticket = await callbackClient.verifyIdToken({
       idToken: tokens.id_token!,
       audience: env.googleClientId,
     });
@@ -87,7 +90,20 @@ export const googleCallback = async (req: Request, res: Response) => {
     };
 
     req.session.refreshToken = tokens.refresh_token ?? undefined;
-    res.redirect(`${env.frontendUrl}/profile?status=success`);
+
+    // Explicitly save the session before redirecting.
+    // express-session writes to PrismaStore asynchronously — without save(),
+    // res.redirect() can fire before the DB write completes, causing /auth/status
+    // to return 401 on the very next request (the browser lands on /profile and
+    // the frontend immediately calls /auth/status before the session row exists).
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        logger.error(`Session save error: ${saveErr.message}`);
+        res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Session save failed")}`);
+        return;
+      }
+      res.redirect(`${env.frontendUrl}/profile?status=success`);
+    });
   } catch (err) {
     const error = err as Error;
     logger.error(`OAuth callback error: ${error.message}`);
