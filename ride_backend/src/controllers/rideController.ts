@@ -23,14 +23,14 @@ export const addNewRide = asyncHandler(async (req: Request, res: Response) => {
   const validated = rideCreateSchema.parse(req.body);
 
   await addNewlyCreatedRide({
-    userID:         req.session.user!.id,  // always from session, never from request body
-    source:         validated.from,
-    destination:    validated.to,
-    date:           validated.date,
-    time:           validated.time,
+    userID: req.authUser!.id,
+    source: validated.from,
+    destination: validated.to,
+    date: validated.date,
+    time: validated.time,
     seatsAvailable: validated.seats,
-    totalCost:      validated.price && validated.price > 0 ? validated.price : null,
-    vehicleType:    validated.vehicle,
+    totalCost: validated.price && validated.price > 0 ? validated.price : null,
+    vehicleType: validated.vehicle,
   });
 
   res.status(201).json({ success: true, message: "Ride created successfully" });
@@ -38,13 +38,13 @@ export const addNewRide = asyncHandler(async (req: Request, res: Response) => {
 
 // GET /rides/upcomingRides — the authenticated user's upcoming (Pending) rides
 export const getAllUpcomingRides = asyncHandler(async (req: Request, res: Response) => {
-  const result = await getUpcomingRides({ userID: req.session.user!.id });
+  const result = await getUpcomingRides({ userID: req.authUser!.id });
   res.status(200).json({ success: true, data: result });
 });
 
 // GET /rides/completedRides — the authenticated user's completed rides
 export const getAllCompletedRides = asyncHandler(async (req: Request, res: Response) => {
-  const result = await getCompletedRides({ userID: req.session.user!.id });
+  const result = await getCompletedRides({ userID: req.authUser!.id });
   res.status(200).json({ success: true, data: result });
 });
 
@@ -55,7 +55,7 @@ export const cancelRideForUser = asyncHandler(async (req: Request, res: Response
     res.status(400).json({ success: false, message: "Invalid ride ID" });
     return;
   }
-  const result = await cancelRide({ rideID, ownerID: req.session.user!.id });
+  const result = await cancelRide({ rideID, ownerID: req.authUser!.id });
   res.status(200).json({ success: true, data: result });
 });
 
@@ -66,7 +66,7 @@ export const leaveRideForUser = asyncHandler(async (req: Request, res: Response)
     res.status(400).json({ success: false, message: "Invalid ride ID" });
     return;
   }
-  const result = await leaveRide({ rideID, userID: req.session.user!.id });
+  const result = await leaveRide({ rideID, userID: req.authUser!.id });
   res.status(200).json({ success: true, data: result });
 });
 
@@ -77,7 +77,6 @@ export const getRideGroupForUser = asyncHandler(async (req: Request, res: Respon
     res.status(400).json({ success: false, message: "Invalid ride ID" });
     return;
   }
-  const result = await getRideGroup({ rideID, userID: req.session.user!.id });
+  const result = await getRideGroup({ rideID, userID: req.authUser!.id });
   res.status(200).json({ success: true, data: result });
 });
-

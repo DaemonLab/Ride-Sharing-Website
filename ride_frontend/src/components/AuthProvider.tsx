@@ -2,11 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { User } from "../types";
-import {
-  checkAuthStatus,
-  logoutUser,
-  redirectToGoogleLogin,
-} from "../services/authService";
+import { authClient } from "../lib/authClient";
 
 /**
  * UI Layer — AuthProvider
@@ -21,61 +17,55 @@ import {
  * - After logout, always clears local state even if the server call fails
  */
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
   const location = useLocation();
-
-  /** Calls /auth/status and updates local state accordingly */
-  const checkAuthStatusHandler = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { isAuthenticated: authed, user: userData } = await checkAuthStatus();
-      setIsAuthenticated(authed);
-      setUser(userData);
-      if (authed && location.search.includes("status=")) {
-        window.history.replaceState({}, document.title, window.location.pathname);
+  const { data: session, isPending, refetch } = authClient.useSession();
+  const isAuthenticated = Boolean(session?.user);
+  const user: User | null = session?.user
+    ? {
+        id: String(session.user.id),
+        name: session.user.name ?? "",
+        email: session.user.email,
+        phone: "",
+        profilePicture: session.user.image ?? undefined,
       }
+    : null;
+
+  useEffect(() => {
+    if (isAuthenticated && location.search.includes("status=")) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [isAuthenticated, location.pathname, location.search]);
+
+  const login = () => {
+    setError(null);
+    void authClient.signIn
+      .social({
+        provider: "google",
+        callbackURL: `${window.location.origin}/profile?status=success`,
+      })
+      .then(({ error: signInError }) => {
+        if (signInError) setError(signInError.message);
+      })
+      .catch(() => setError("Google sign-in failed. Please try again."));
+  };
+
+  const logout = async () => {
+    try {
+      await authClient.signOut();
+      await refetch();
+      setError(null);
     } catch {
-      setError("Auth check failed");
-      setIsAuthenticated(false);
-      setUser(null);
-    } finally {
-      setLoading(false);
+      setError("Logout failed");
     }
   };
 
-  // Single effect — runs on mount and whenever the query string changes.
-  // On every mount we always check auth (restores session after page refresh).
-  // On subsequent location.search changes we only re-check if ?status= is present
-  // (i.e. the Google OAuth redirect just landed).
-  // This avoids two concurrent checkAuthStatus() calls on the initial render
-  // when the URL is already /profile?status=success, which caused a race condition
-  // where loading briefly went false with isAuthenticated=false → ProtectedRoute
-  // kicked the user back to /signin.
-  useEffect(() => {
-    checkAuthStatusHandler();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search]);
-
-  /** Redirects to Google OAuth — no API call, just a browser navigation */
-  const login = () => {
-    redirectToGoogleLogin();
-  };
-
-  /** Destroys the server session and clears local auth state */
-  const logout = async () => {
+  const checkAuthStatusHandler = async () => {
+    setError(null);
     try {
-      await logoutUser();
+      await refetch();
     } catch {
-      setError("Logout failed");
-    } finally {
-      // Always clear local state even if the server call fails
-      setIsAuthenticated(false);
-      setUser(null);
+      setError("Auth check failed");
     }
   };
 
@@ -84,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         user,
         isAuthenticated,
-        loading,
+        loading: isPending,
         error,
         login,
         logout,

@@ -1,6 +1,8 @@
 import express from "express";
 import session from "express-session";
 import cors from "cors";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./auth.js";
 import { env } from "./config/env.js";
 import { PrismaStore } from "./config/prismaStore.js";
 import apiRoutes from "./routes/index.js";
@@ -30,12 +32,7 @@ const app = express();
 if (env.cookieSecure) app.set("trust proxy", 1);
 
 // Normalized allowed origins
-const allowedOrigins = new Set([
-  env.frontendUrl,
-  "https://ride-sharing-website.vercel.app",
-  "http://localhost:5173",
-  "http://localhost:3000",
-]);
+const allowedOrigins = new Set(env.trustedOrigins);
 
 // Allow requests from the frontend origin with cookies
 app.use(
@@ -44,15 +41,17 @@ app.use(
       // Allow requests with no origin (like mobile apps, curl, or server-to-server)
       if (!origin) return callback(null, true);
       const cleanOrigin = origin.replace(/\/+$/, "");
-      if (allowedOrigins.has(cleanOrigin) || cleanOrigin.endsWith(".vercel.app")) {
+      if (allowedOrigins.has(cleanOrigin)) {
         // Echo the exact origin sent by the browser to avoid trailing-slash or case mismatches
         return callback(null, origin);
       }
       return callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,
-  })
+  }),
 );
+
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
@@ -68,7 +67,7 @@ const sessionMiddleware = session({
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     secure: env.cookieSecure,
-    httpOnly: true,               // JS on the page cannot read this cookie
+    httpOnly: true, // JS on the page cannot read this cookie
     sameSite: env.cookieSameSite, // CSRF protection
     partitioned: env.cookieSecure && env.cookieSameSite === "none",
   },
@@ -97,4 +96,3 @@ app.use((_req, res) => res.status(404).json({ success: false, message: "Route no
 app.use(errorHandler);
 
 export default app;
-

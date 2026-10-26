@@ -8,4 +8,3 @@ describe("environment configuration", () => {
     expect(Array.isArray(env.allowedDomains)).toBe(true);
   });
 });
-

@@ -1,9 +1,5 @@
 import type { Request, Response } from "express";
-import {
-  getRideMembers,
-  addMessage,
-  getOlderMessages,
-} from "../services/chatService.js";
+import { getRideMembers, addMessage, getOlderMessages } from "../services/chatService.js";
 import { asyncHandler } from "../utils/index.js";
 
 // Re-export service methods for any external consumers
@@ -20,7 +16,7 @@ export const getRideMembersHttp = asyncHandler(async (req: Request, res: Respons
     return;
   }
   const members = await getRideMembers({ rideID });
-  if (!members.some((member) => member.id === req.session.user!.id)) {
+  if (!members.some((member) => member.id === req.authUser!.id)) {
     res.status(403).json({ success: false, message: "Only ride members can view this group" });
     return;
   }

@@ -15,7 +15,7 @@ export const sendRequest = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  const requestBy = req.session.user!.id; // always from session, never from body
+  const requestBy = req.authUser!.id;
   const result = await handleUserSentRequest({ rideID, requestBy });
   res.status(200).json({ success: true, data: result });
 });
@@ -37,18 +37,18 @@ export const handleRequest = asyncHandler(async (req: Request, res: Response) =>
     return;
   }
 
-  await handleUserReceivedRequest({ rideID, requestBy, flag, ownerID: req.session.user!.id });
+  await handleUserReceivedRequest({ rideID, requestBy, flag, ownerID: req.authUser!.id });
   res.status(200).json({ success: true, data: "Request handled successfully." });
 });
 
 /** GET /request/requestsSent — all pending requests the user has sent */
 export const getRequestsSent = asyncHandler(async (req: Request, res: Response) => {
-  const result = await getSentRequests({ requestBy: req.session.user!.id });
+  const result = await getSentRequests({ requestBy: req.authUser!.id });
   res.status(200).json({ success: true, data: result });
 });
 
 /** GET /request/requestsReceived — all pending requests received on the user's rides */
 export const getRequestsReceived = asyncHandler(async (req: Request, res: Response) => {
-  const result = await getReceivedRequests({ createdBy: req.session.user!.id });
+  const result = await getReceivedRequests({ createdBy: req.authUser!.id });
   res.status(200).json({ success: true, data: result });
 });

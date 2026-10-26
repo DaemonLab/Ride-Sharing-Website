@@ -6,12 +6,12 @@ A modern, secure, full-stack campus ride-sharing and carpooling web application 
 
 ## 🌟 Key Features
 
-- **🔐 Domain-Restricted Google OAuth 2.0**: Ensures only verified institutional emails (`@iiti.ac.in`) can sign up and access the platform.
-- **🛡️ Server-Side Session Management**: Stateful session persistence backed by PostgreSQL (`session` table) with HTTP-only, SameSite cookies.
+- **🔐 Better Auth Google Sign-In**: Google OAuth with the existing allowed-domain policy and database-backed sessions.
+- **🛡️ Server-Side Session Management**: Better Auth uses HTTP-only cookies and PostgreSQL; the legacy Express session stays during transition.
 - **⚡ Atomic Ride Request Lifecycle**: Prevents race conditions and over-booking using Prisma database transactions (`prisma.$transaction`).
   - Strict re-request guards against spamming after rejection or leaving.
   - Real-time seat decrement on approval.
-- **💬 Real-Time Ride Group Chat**: WebSockets via **Socket.IO** shared over the same authenticated Express session.
+- **💬 Real-Time Ride Group Chat**: WebSockets via **Socket.IO** authenticated against the Better Auth session and ride membership.
 - **🔍 Smart Search & Filtering**: Multi-criteria search (origin, destination, date, time window) with client-side and server-side filtering.
 - **📱 Responsive, Modern UI**: Designed with glassmorphism aesthetics, TailwindCSS, and fluid tab animations using Framer Motion.
 - **📧 Contact & Support System**: Automated dual-email delivery (inquiry notification to admin + auto-reply confirmation to student) powered by Nodemailer.
@@ -29,6 +29,7 @@ Ride-Sharing-Website/
 │   │   └── schema.prisma         # Prisma ORM Schema & PostgreSQL Models
 │   ├── src/
 │   │   ├── config/               # Env validation, Logger (Winston), Prisma, Socket.IO
+│   │   ├── auth.ts               # Better Auth server configuration
 │   │   ├── controllers/          # Request handlers & HTTP responses
 │   │   ├── middleware/           # Auth guard, Error handling, Session middleware
 │   │   ├── routes/               # Modular Express route registries
@@ -47,6 +48,7 @@ Ride-Sharing-Website/
     │   ├── hooks/                # Custom React hooks (useAuth, useRides, useRideRequests)
     │   ├── pages/                # Route views (Home, Find, Offer, Profile, Chat, BookRide)
     │   ├── services/             # Frontend service abstraction layer
+    │   ├── lib/authClient.ts     # Better Auth React client
     │   ├── types/                # Shared TypeScript interfaces & types
     │   └── App.tsx               # Root component & route definitions
 ```
@@ -69,6 +71,7 @@ erDiagram
         int id PK
         string google_id UK
         string email
+        boolean emailVerified
         string name
         string picture
         boolean isadmin
@@ -112,6 +115,27 @@ erDiagram
         json sess
         datetime expire
     }
+
+    authSession {
+        string id PK
+        string token UK
+        int userId FK
+        datetime expiresAt
+    }
+
+    account {
+        string id PK
+        string accountId
+        string providerId
+        int userId FK
+    }
+
+    verification {
+        string id PK
+        string identifier
+        string value
+        datetime expiresAt
+    }
 ```
 
 ---
@@ -125,6 +149,8 @@ erDiagram
 | `GET` | `/auth/google/callback` | No | Handles OAuth callback & session creation |
 | `GET` | `/auth/status` | No | Returns authenticated user session info |
 | `POST` | `/auth/logout` | Yes | Destroys session and clears cookie |
+
+Better Auth handles Google sign-in, callback, session, and sign-out under `/api/auth/*`. The `/auth/*` routes above remain temporarily for the existing Express-session flow during transition.
 
 ### Rides (`/rides`)
 | Method | Endpoint | Auth Required | Description |
@@ -208,6 +234,9 @@ NODE_ENV=development
 DATABASE_URL="postgresql://username:password@localhost:5432/rideshare?schema=public"
 DATABASE_SSL=false
 SESSION_SECRET="your-super-secure-session-secret"
+BETTER_AUTH_SECRET="generate-a-random-secret-at-least-32-characters-long"
+BETTER_AUTH_URL="http://localhost:3000"
+TRUSTED_ORIGINS="https://your-exact-preview.example.com"
 FRONTEND_URL="http://localhost:5173"
 GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
@@ -219,6 +248,12 @@ EMAIL_USER_RECEIVER="admin-support@rideshare.com"
 COOKIE_SECURE=false
 COOKIE_SAME_SITE=lax
 ```
+
+Add `http://localhost:3000/api/auth/callback/google` to the Google OAuth client's authorized redirect URIs. In production, use `${BETTER_AUTH_URL}/api/auth/callback/google`. Keep `BETTER_AUTH_SECRET` in the backend `.env`; if omitted, the app derives a separate key from `SESSION_SECRET` for compatibility.
+
+`TRUSTED_ORIGINS` is a comma-separated allowlist of exact browser origins. Add each Vercel preview origin explicitly; arbitrary `*.vercel.app` origins are no longer accepted for credentialed API requests.
+
+Before deploying the Better Auth flow, review and apply `ride_backend/prisma/better-auth-migration.sql` against a backup-backed staging database. It preserves integer user IDs, adds Better Auth tables, and backfills Google accounts by exact Google subject. It aborts if duplicate email values exist, ignoring case. This repository has no tracked Prisma migration history, so coordinate how the SQL is applied and baselined before using `prisma migrate deploy`.
 
 Run database migrations:
 ```bash

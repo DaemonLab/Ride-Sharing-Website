@@ -3,6 +3,7 @@ export default {
   testEnvironment: "node",
   extensionsToTreatAsEsm: [".ts"],
   testMatch: ["**/test/**/*.test.ts"],
+  setupFiles: ["<rootDir>/test/setupEnv.ts"],
   transform: {
     "^.+\\.tsx?$": ["ts-jest", { useESM: true, tsconfig: "<rootDir>/tsconfig.json" }],
   },

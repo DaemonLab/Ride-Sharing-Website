@@ -21,14 +21,26 @@ describe("Zod API schemas", () => {
   });
 
   test("rejects impossible dates and duplicate route endpoints", () => {
-    const baseRide = { from: "Campus", to: "Airport", date: "2099-02-28", time: "09:00", seats: 1, vehicle: "cab" };
+    const baseRide = {
+      from: "Campus",
+      to: "Airport",
+      date: "2099-02-28",
+      time: "09:00",
+      seats: 1,
+      vehicle: "cab",
+    };
     expect(() => rideCreateSchema.parse({ ...baseRide, date: "2099-02-30" })).toThrow();
     expect(() => rideCreateSchema.parse({ ...baseRide, to: "campus" })).toThrow();
   });
 
   test("defaults an empty list query and accepts a from-only search", () => {
     expect(rideSearchQuerySchema.parse({ from: " Campus " })).toEqual({
-      from: "Campus", to: "", date: "", time: "", page: 1, pageSize: 6,
+      from: "Campus",
+      to: "",
+      date: "",
+      time: "",
+      page: 1,
+      pageSize: 6,
     });
   });
 
@@ -58,15 +70,21 @@ describe("ride search helpers", () => {
 
   test("splits time filtering when the window crosses midnight", () => {
     const where = buildAvailableRideWhere(rideSearchQuerySchema.parse({ time: "00:30" }));
-    expect(where.OR).toEqual([
-      { time: { gte: "23:30" } },
-      { time: { lte: "01:30" } },
-    ]);
+    expect(where.OR).toEqual([{ time: { gte: "23:30" } }, { time: { lte: "01:30" } }]);
   });
 
   test("clamps pages beyond the final page and handles an empty result", () => {
-    expect(getPagination(9, 10, 23)).toMatchObject({ page: 3, totalPages: 3, skip: 20, hasNextPage: false });
-    expect(getPagination(1, 10, 0)).toMatchObject({ page: 1, totalPages: 0, skip: 0, hasNextPage: false });
+    expect(getPagination(9, 10, 23)).toMatchObject({
+      page: 3,
+      totalPages: 3,
+      skip: 20,
+      hasNextPage: false,
+    });
+    expect(getPagination(1, 10, 0)).toMatchObject({
+      page: 1,
+      totalPages: 0,
+      skip: 0,
+      hasNextPage: false,
+    });
   });
 });
-

@@ -31,12 +31,16 @@ export const googleCallback = async (req: Request, res: Response) => {
 
   if (error) {
     logger.warn(`OAuth error: ${error} — ${error_description}`);
-    res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Authentication cancelled or failed")}`);
+    res.redirect(
+      `${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Authentication cancelled or failed")}`,
+    );
     return;
   }
 
   if (!code) {
-    res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Authorization code not provided")}`);
+    res.redirect(
+      `${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Authorization code not provided")}`,
+    );
     return;
   }
 
@@ -44,7 +48,11 @@ export const googleCallback = async (req: Request, res: Response) => {
     // Create a fresh client per callback — the singleton client's setCredentials()
     // mutates shared state, which can cause concurrent login flows (two open tabs)
     // to corrupt each other's token exchange.
-    const callbackClient = new OAuth2Client(env.googleClientId, env.googleClientSecret, env.redirectUrl);
+    const callbackClient = new OAuth2Client(
+      env.googleClientId,
+      env.googleClientSecret,
+      env.redirectUrl,
+    );
     const { tokens } = await callbackClient.getToken(code);
     callbackClient.setCredentials(tokens);
 
@@ -55,13 +63,17 @@ export const googleCallback = async (req: Request, res: Response) => {
 
     const payload = ticket.getPayload();
     if (!payload?.email || !payload.sub) {
-      res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Invalid token payload")}`);
+      res.redirect(
+        `${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Invalid token payload")}`,
+      );
       return;
     }
 
     if (!isEmailAllowed(payload.email)) {
       logger.error(`Email domain not allowed: ${payload.email}`);
-      res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Email domain not allowed")}`);
+      res.redirect(
+        `${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Email domain not allowed")}`,
+      );
       return;
     }
 
@@ -71,17 +83,22 @@ export const googleCallback = async (req: Request, res: Response) => {
       const updated = await update(user.id, { name: payload.name, picture: payload.picture });
       if (updated) user = updated;
     } else {
-      user = await create({ googleId: payload.sub, email: payload.email, name: payload.name, picture: payload.picture });
+      user = await create({
+        googleId: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
+      });
     }
 
     // Store user identity in the session — this is what req.session.user gives you on every route
     req.session.user = {
-      id:       user.id,
-      googleId: user.google_id,
-      email:    user.email,
-      name:     user.name ?? null,
-      picture:  user.picture ?? null,
-      isAdmin:  user.isadmin ?? null,
+      id: user.id,
+      googleId: user.google_id ?? "",
+      email: user.email,
+      name: user.name ?? null,
+      picture: user.picture ?? null,
+      isAdmin: user.isadmin ?? null,
     };
 
     req.session.refreshToken = tokens.refresh_token ?? undefined;
@@ -94,7 +111,9 @@ export const googleCallback = async (req: Request, res: Response) => {
     req.session.save((saveErr) => {
       if (saveErr) {
         logger.error(`Session save error: ${saveErr.message}`);
-        res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Session save failed")}`);
+        res.redirect(
+          `${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Session save failed")}`,
+        );
         return;
       }
       res.redirect(`${env.frontendUrl}/profile?status=success`);
@@ -102,7 +121,9 @@ export const googleCallback = async (req: Request, res: Response) => {
   } catch (err) {
     const error = err as Error;
     logger.error(`OAuth callback error: ${error.message}`);
-    res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent(error.message)}`);
+    res.redirect(
+      `${env.frontendUrl}/signin?status=error&message=${encodeURIComponent(error.message)}`,
+    );
   }
 };
 
@@ -131,4 +152,3 @@ export const logout = (req: Request, res: Response) => {
     res.status(200).json({ success: true, message: "Logged out successfully" });
   });
 };
-

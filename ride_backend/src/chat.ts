@@ -6,8 +6,8 @@ export function registerChatHandlers() {
   const io = getIO();
 
   io.on("connection", (socket) => {
-    const req = socket.request as any; // session is attached by initSocket via io.engine.use
-    const sessionUser = req.session?.user;
+    const req = socket.request as any;
+    const sessionUser = req.authUser;
 
     if (!sessionUser) {
       logger.warn(`Unauthenticated socket connection rejected: ${socket.id}`);
