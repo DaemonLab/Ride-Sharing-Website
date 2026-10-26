@@ -64,6 +64,24 @@ export const auth = betterAuth({
     "http://localhost:3000",
   ],
 
+  advanced: {
+    // In production (Vercel → Render), frontend and backend are on different domains.
+    // OAuth state cookies must be SameSite=None; Secure so the browser sends them
+    // on the cross-site Google → backend callback redirect.
+    // In development (localhost) we fall back to Lax which works fine same-site.
+    cookies: {
+      session_token: {
+        attributes: {
+          sameSite: (env.nodeEnv === "production" ? "none" : "lax") as "none" | "lax",
+          secure: env.cookieSecure,
+        },
+      },
+    },
+    crossSubdomainCookies: {
+      enabled: false,
+    },
+  },
+
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       if (ctx.path.startsWith("/callback")) {
