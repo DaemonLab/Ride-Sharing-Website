@@ -38,3 +38,41 @@ export async function update(id: number, userData: { name?: string | null; pictu
   return prisma.users.update({ where: { id }, data });
 }
 
+// Sync user from Better Auth session into the app's `users` table
+export async function syncUserWithApp(authUser: {
+  id: string;
+  email: string;
+  name?: string | null;
+  image?: string | null;
+}) {
+  let appUser = await prisma.users.findFirst({
+    where: { email: authUser.email },
+  });
+
+  if (appUser) {
+    if (
+      (authUser.name && authUser.name !== appUser.name) ||
+      (authUser.image && authUser.image !== appUser.picture)
+    ) {
+      appUser = await prisma.users.update({
+        where: { id: appUser.id },
+        data: {
+          name: authUser.name ?? appUser.name,
+          picture: authUser.image ?? appUser.picture,
+        },
+      });
+    }
+    return appUser;
+  }
+
+  return prisma.users.create({
+    data: {
+      google_id: authUser.id,
+      email: authUser.email,
+      name: authUser.name ?? authUser.email,
+      picture: authUser.image ?? null,
+      isadmin: false,
+    },
+  });
+}
+
