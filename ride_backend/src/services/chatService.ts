@@ -1,13 +1,13 @@
 import { prisma } from "../config/prisma.js";
 
 export interface RideMember {
-  id: number;
+  id: string;
   name: string | null;
 }
 
 export interface MessageInput {
   rideID: number;
-  user_id: number;
+  user_id: string;
   name: string | null;
   message: string;
   timestamp?: Date;
@@ -38,7 +38,7 @@ export async function getRideMembers({ rideID }: { rideID: number }): Promise<Ri
 
   const memberIds = [ride.createdBy, ...acceptedRequests.map((r) => r.requestBy)];
 
-  return prisma.users.findMany({
+  return prisma.user.findMany({
     where: { id: { in: memberIds } },
     select: { id: true, name: true },
   });
@@ -77,7 +77,7 @@ export async function getOlderMessages({ rideID }: { rideID: number }): Promise<
 
   return messages.map((m) => ({
     rideId: String(m.rideID),
-    user_id: String(m.messageBy),
+    user_id: m.messageBy,
     name: m.sender?.name ?? m.rideOwner ?? "Unknown",
     message: m.message,
     timestamp: `${m.messageDate}T${m.messageTime}Z`,

@@ -1,17 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "../lib/auth.js";
-import { syncUserWithApp } from "../services/userService.js";
 import { logger } from "../config/logger.js";
 
 export interface AppCurrentUser {
-  id: number;
-  googleId: string;
+  id: string;
   email: string;
-  name: string | null;
+  name: string;
   picture: string | null;
   isAdmin: boolean;
-  authId: string;
 }
 
 declare global {
@@ -29,8 +26,7 @@ declare global {
 
 /**
  * Token-based authenticate middleware (Bearer token).
- * Validates the token with Better Auth, resolves/syncs the database user,
- * and attaches currentUser to the request.
+ * Validates the token with Better Auth and attaches the user directly to the request.
  */
 export const authenticate = async (
   req: Request,
@@ -47,20 +43,12 @@ export const authenticate = async (
       return;
     }
 
-    const appUser = await syncUserWithApp(session.user);
-    if (!appUser) {
-      res.status(401).json({ message: "Unauthorized: User not found in database" });
-      return;
-    }
-
     const currentUser: AppCurrentUser = {
-      id: appUser.id,
-      googleId: appUser.google_id,
-      email: appUser.email,
-      name: appUser.name,
-      picture: appUser.picture,
-      isAdmin: appUser.isadmin ?? false,
-      authId: session.user.id,
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+      picture: session.user.image ?? null,
+      isAdmin: (session.user as any).isAdmin ?? false,
     };
 
     req.currentUser = currentUser;

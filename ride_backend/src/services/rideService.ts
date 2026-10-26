@@ -3,8 +3,7 @@ import { logger } from "../config/logger.js";
 import type { RideSearchQuery } from "../validation/rideSchemas.js";
 import { buildAvailableRideWhere, getPagination } from "../utils/rideSearch.js";
 
-// Small helper — attaches a statusCode to a plain Error so errorHandler
-// can send the right HTTP status. Replaces the old RideLifecycleError class.
+// Helper for error with status code
 function createError(message: string, statusCode = 400) {
   const error = new Error(message);
   (error as any).statusCode = statusCode;
@@ -12,8 +11,6 @@ function createError(message: string, statusCode = 400) {
 }
 
 export async function completeExpiredRides() {
-  // Date and time are legacy VARCHAR columns. Keep this compatibility update in
-  // one place until they are migrated to a single timestamp column.
   await prisma.$executeRaw`
     UPDATE rides
     SET "rideStatus" = 'Completed'
@@ -25,14 +22,14 @@ export async function completeExpiredRides() {
   `;
 }
 
-export async function getRideGroup({ rideID, userID }: { rideID: number; userID: number }) {
+export async function getRideGroup({ rideID, userID }: { rideID: number; userID: string }) {
   const ride = await prisma.rides.findUnique({
     where: { rideID },
     include: {
-      creator: { select: { id: true, name: true, email: true, picture: true } },
+      creator: { select: { id: true, name: true, email: true, image: true } },
       requests: {
         where: { requestStatus: "Accepted" },
-        include: { requester: { select: { id: true, name: true, email: true, picture: true } } },
+        include: { requester: { select: { id: true, name: true, email: true, image: true } } },
       },
     },
   });
@@ -42,6 +39,13 @@ export async function getRideGroup({ rideID, userID }: { rideID: number; userID:
   if (ride.createdBy !== userID && !isAcceptedMember) {
     throw createError("Only ride members can view this group", 403);
   }
+
+  const formatMember = (m: { id: string; name: string | null; email: string; image: string | null }) => ({
+    id: m.id,
+    name: m.name,
+    email: m.email,
+    picture: m.image,
+  });
 
   return {
     rideID: ride.rideID,
@@ -54,11 +58,11 @@ export async function getRideGroup({ rideID, userID }: { rideID: number; userID:
     seatsAvailable: ride.seatsAvailable,
     totalCost: ride.totalCost ?? null,
     rideStatus: ride.rideStatus,
-    members: [ride.creator, ...ride.requests.map((r) => r.requester)],
+    members: [formatMember(ride.creator), ...ride.requests.map((r) => formatMember(r.requester))],
   };
 }
 
-export async function cancelRide({ rideID, ownerID }: { rideID: number; ownerID: number }) {
+export async function cancelRide({ rideID, ownerID }: { rideID: number; ownerID: string }) {
   await completeExpiredRides();
   return prisma.$transaction(async (tx) => {
     const ride = await tx.rides.findUnique({ where: { rideID } });
@@ -66,7 +70,6 @@ export async function cancelRide({ rideID, ownerID }: { rideID: number; ownerID:
     if (ride.createdBy !== ownerID) throw createError("Only the ride owner can cancel this ride", 403);
     if (ride.rideStatus !== "Pending") throw createError("Only pending rides can be cancelled");
 
-    // Single update — Prisma throws P2025 if not found, so no count check needed.
     await tx.rides.update({
       where: { rideID },
       data: { rideStatus: "Cancelled" },
@@ -80,7 +83,7 @@ export async function cancelRide({ rideID, ownerID }: { rideID: number; ownerID:
   });
 }
 
-export async function leaveRide({ rideID, userID }: { rideID: number; userID: number }) {
+export async function leaveRide({ rideID, userID }: { rideID: number; userID: string }) {
   await completeExpiredRides();
   return prisma.$transaction(async (tx) => {
     const ride = await tx.rides.findUnique({
@@ -91,8 +94,6 @@ export async function leaveRide({ rideID, userID }: { rideID: number; userID: nu
     if (ride.createdBy === userID) throw createError("The ride owner must cancel the ride instead");
     if (ride.rideStatus !== "Pending") throw createError("Only pending rides can be left");
 
-    // Claim the accepted request conditionally. This prevents a double-click or
-    // concurrent leave requests from returning the same seat more than once.
     const requestUpdate = await tx.requests.updateMany({
       where: { rideID, requestBy: userID, requestStatus: "Accepted" },
       data: { requestStatus: "Left" },
@@ -108,22 +109,6 @@ export async function leaveRide({ rideID, userID }: { rideID: number; userID: nu
   });
 }
 
-/**
- * Mark past rides as Completed (lazy expiry on each fetch), then return all
- * future Pending rides with their creator's profile info.
- *
- * The $executeRaw is required because Prisma cannot cast a VARCHAR date+time
- * column pair to a timestamp in a single expression.
- *
- * Time format defence: the `time` column may contain 'HH:MM', 'HH:MM:SS', or
- * legacy values like 'HH:MM:SS:xx'. We always extract only the HH and MM parts
- * via SPLIT_PART before building the interval, so malformed values never crash
- * the query (fixes: "invalid input syntax for type interval: '21:56:00:00'").
- */
-/**
- * Returns one page of available rides. All search filtering happens in Prisma
- * so a URL can be shared without depending on browser-only filtering.
- */
 export async function searchAvailableRides(query: RideSearchQuery) {
   await completeExpiredRides();
   const where = buildAvailableRideWhere(query);
@@ -136,24 +121,35 @@ export async function searchAvailableRides(query: RideSearchQuery) {
       skip: meta.skip,
       take: meta.pageSize,
       include: {
-        creator: { select: { id: true, name: true, email: true, picture: true } },
+        creator: { select: { id: true, name: true, email: true, image: true } },
       },
       orderBy: [{ date: "asc" }, { time: "asc" }, { rideID: "asc" }],
     });
 
+    const formattedItems = items.map((r) => ({
+      ...r,
+      creator: {
+        id: r.creator.id,
+        name: r.creator.name,
+        email: r.creator.email,
+        picture: r.creator.image,
+      },
+    }));
+
     const { skip: _skip, ...pagination } = meta;
-    return { items, meta: pagination };
+    return { items: formattedItems, meta: pagination };
   });
 }
 
-/**
- * Add a newly created ride.
- * Uses userID directly from session — no redundant email lookup.
- */
 export async function addNewlyCreatedRide(data: {
-  userID: number; source: string; destination: string;
-  date: string; time: string; vehicleType: string;
-  seatsAvailable: number; totalCost?: number | null;
+  userID: string;
+  source: string;
+  destination: string;
+  date: string;
+  time: string;
+  vehicleType: string;
+  seatsAvailable: number;
+  totalCost?: number | null;
 }) {
   try {
     await prisma.rides.create({
@@ -174,15 +170,11 @@ export async function addNewlyCreatedRide(data: {
   } catch (error) {
     const err = error as Error;
     logger.error(`Error adding newly created ride: ${err.message}`);
-    throw error; // re-throw original so statusCode on the error is preserved
+    throw error;
   }
 }
 
-/**
- * Shared helper: get rides (upcoming or completed) that the user created or joined.
- * Replaces two nearly identical raw SQL blocks with a single typed Prisma query.
- */
-async function getUserRidesByStatus(userID: number, rideStatus: string) {
+async function getUserRidesByStatus(userID: string, rideStatus: string) {
   return prisma.rides.findMany({
     where: {
       rideStatus,
@@ -206,10 +198,7 @@ async function getUserRidesByStatus(userID: number, rideStatus: string) {
   });
 }
 
-/**
- * Get upcoming (Pending) rides that the user created or joined.
- */
-export async function getUpcomingRides({ userID }: { userID: number }) {
+export async function getUpcomingRides({ userID }: { userID: string }) {
   try {
     await completeExpiredRides();
     const rides = await getUserRidesByStatus(userID, "Pending");
@@ -235,10 +224,7 @@ export async function getUpcomingRides({ userID }: { userID: number }) {
   }
 }
 
-/**
- * Get completed rides that the user created or joined.
- */
-export async function getCompletedRides({ userID }: { userID: number }) {
+export async function getCompletedRides({ userID }: { userID: string }) {
   try {
     await completeExpiredRides();
     const rides = await getUserRidesByStatus(userID, "Completed");
@@ -263,4 +249,3 @@ export async function getCompletedRides({ userID }: { userID: number }) {
     throw error;
   }
 }
-

@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "../lib/auth.js";
-import { syncUserWithApp } from "../services/userService.js";
 import { logger } from "../config/logger.js";
 import { env } from "../config/env.js";
 
@@ -35,21 +34,14 @@ export const getStatus = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const appUser = await syncUserWithApp(session.user);
-    if (!appUser) {
-      res.status(401).json({ isAuthenticated: false, user: null });
-      return;
-    }
-
     res.status(200).json({
       isAuthenticated: true,
       user: {
-        id: appUser.id,
-        googleId: appUser.google_id,
-        email: appUser.email,
-        name: appUser.name,
-        picture: appUser.picture,
-        isAdmin: appUser.isadmin ?? false,
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        picture: session.user.image ?? null,
+        isAdmin: (session.user as any).isAdmin ?? false,
       },
     });
   } catch (err) {

@@ -5,32 +5,32 @@ import { createAuthMiddleware } from "better-auth/api";
 import { prisma } from "../config/prisma.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
-import { syncUserWithApp } from "../services/userService.js";
 
 /**
  * Better Auth instance configured for Token-Based (Bearer) authentication.
- * Docs:
- *  - Express: https://better-auth.com/docs/integrations/express
- *  - Prisma:  https://better-auth.com/docs/adapters/prisma
- *  - Google:  https://better-auth.com/docs/authentication/google
- *  - Bearer:  https://better-auth.com/docs/plugins/bearer
+ * Single source of truth: Better Auth's `User` model is the only user model.
  */
 export const auth = betterAuth({
   baseURL: env.betterAuthUrl,
   secret: env.betterAuthSecret,
 
-  // Token-based authentication plugin
   plugins: [
     bearer(),
   ],
 
-  // Prisma adapter connected to PostgreSQL
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
 
-  // Domain allowlist check per Better Auth 1.7 docs
   user: {
+    additionalFields: {
+      isAdmin: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+        input: false,
+      },
+    },
     validateUserInfo: ({ user, source }) => {
       if (source.oauth?.providerId !== "google") return;
       const emailDomain = user.email?.split("@")[1]?.toLowerCase();
@@ -44,7 +44,6 @@ export const auth = betterAuth({
     },
   },
 
-  // Google OAuth configuration
   socialProviders: {
     google: {
       clientId: env.googleClientId,
@@ -53,13 +52,11 @@ export const auth = betterAuth({
     },
   },
 
-  // 7-day token expiration
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days in seconds
     updateAge: 60 * 60 * 24,     // refresh if older than 1 day
   },
 
-  // Trusted origins for CORS
   trustedOrigins: [
     env.frontendUrl,
     "https://ride-sharing-website.vercel.app",
@@ -67,19 +64,11 @@ export const auth = betterAuth({
     "http://localhost:3000",
   ],
 
-  // Hooks to sync user with existing app table and pass token to frontend on OAuth redirect
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       if (ctx.path.startsWith("/callback")) {
         const newSession = ctx.context.newSession;
-        if (newSession?.session?.token && newSession.user) {
-          try {
-            await syncUserWithApp(newSession.user);
-          } catch (syncErr) {
-            logger.error("Failed to sync user with app database:", syncErr);
-          }
-
-          // In token-based auth, redirect back to frontend with the Bearer token in the URL query
+        if (newSession?.session?.token) {
           const redirectUrl = new URL(`${env.frontendUrl}/auth/callback`);
           redirectUrl.searchParams.set("token", newSession.session.token);
           throw ctx.redirect(redirectUrl.toString());

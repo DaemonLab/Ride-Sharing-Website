@@ -3,12 +3,11 @@ import { getRideMembers, addMessage, getOlderMessages } from "./services/chatSer
 import { logger } from "./config/logger.js";
 import { auth } from "./lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
-import { syncUserWithApp } from "./services/userService.js";
 
 export function registerChatHandlers() {
   const io = getIO();
 
-  // Socket middleware: authenticate via Bearer token
+  // Socket middleware: authenticate via Bearer token directly with Better Auth
   io.use(async (socket, next) => {
     try {
       const token =
@@ -31,16 +30,11 @@ export function registerChatHandlers() {
         return next(new Error("Authentication error: Invalid or expired token"));
       }
 
-      const appUser = await syncUserWithApp(session.user);
-      if (!appUser) {
-        return next(new Error("Authentication error: User not found"));
-      }
-
       (socket as any).user = {
-        id: appUser.id,
-        email: appUser.email,
-        name: appUser.name,
-        picture: appUser.picture,
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        picture: session.user.image ?? null,
       };
 
       next();
@@ -136,7 +130,7 @@ export function registerChatHandlers() {
 
         io.to(String(numericRideId)).emit("chat message", {
           rideId: String(numericRideId),
-          user_id: String(member.id),
+          user_id: member.id,
           name: member.name ?? "Anonymous",
           message: trimmedMessage,
           timestamp: timestamp.toISOString(),
