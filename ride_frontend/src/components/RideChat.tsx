@@ -38,8 +38,15 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
   useEffect(() => {
     if (!rideID) return;
 
-    // Create the socket connection only when the chat page is actually open
+    // Create the socket connection with Bearer token authentication
+    const token = localStorage.getItem('bearer_token');
     socketRef.current = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000', {
+      auth: {
+        token,
+      },
+      extraHeaders: token ? {
+        Authorization: `Bearer ${token}`,
+      } : undefined,
       withCredentials: true,
     });
     const socket = socketRef.current;

@@ -1,134 +1,82 @@
-import { OAuth2Client } from "google-auth-library";
 import { Request, Response } from "express";
-import { isEmailAllowed } from "../utils/index.js";
-import { findByGoogleId, create, update } from "../services/userService.js";
+import { fromNodeHeaders } from "better-auth/node";
+import { auth } from "../lib/auth.js";
 import { logger } from "../config/logger.js";
 import { env } from "../config/env.js";
 
-const SCOPES = [
-  "https://www.googleapis.com/auth/userinfo.profile",
-  "https://www.googleapis.com/auth/userinfo.email",
-];
-
-// Create the OAuth2 client using credentials from env
-const oauthClient = new OAuth2Client(env.googleClientId, env.googleClientSecret, env.redirectUrl);
-
-// GET /auth/google — redirect user to Google OAuth consent screen
-export const loginRedirect = (_req: Request, res: Response) => {
-  const authUrl = oauthClient.generateAuthUrl({
-    access_type: "offline",
-    prompt: "select_account",
-    scope: SCOPES,
-  });
-  res.redirect(authUrl);
-};
-
-// GET /auth/google/callback — Google redirects here with the auth code after user consents
-export const googleCallback = async (req: Request, res: Response) => {
-  const { code, error, error_description } = req.query as Record<string, string | undefined>;
-
-  logger.info(`OAuth callback — code length: ${code?.length ?? "none"}, session: ${req.sessionID}`);
-
-  if (error) {
-    logger.warn(`OAuth error: ${error} — ${error_description}`);
-    res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Authentication cancelled or failed")}`);
-    return;
-  }
-
-  if (!code) {
-    res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Authorization code not provided")}`);
-    return;
-  }
-
+/**
+ * GET /auth/google — initiates Google OAuth via Better Auth and redirects to Google consent screen
+ */
+export const loginRedirect = async (_req: Request, res: Response): Promise<void> => {
   try {
-    // Create a fresh client per callback — the singleton client's setCredentials()
-    // mutates shared state, which can cause concurrent login flows (two open tabs)
-    // to corrupt each other's token exchange.
-    const callbackClient = new OAuth2Client(env.googleClientId, env.googleClientSecret, env.redirectUrl);
-    const { tokens } = await callbackClient.getToken(code);
-    callbackClient.setCredentials(tokens);
-
-    const ticket = await callbackClient.verifyIdToken({
-      idToken: tokens.id_token!,
-      audience: env.googleClientId,
+    const callbackURL = `${env.frontendUrl}/auth/callback`;
+    const result = await auth.api.signInSocial({
+      body: {
+        provider: "google",
+        callbackURL,
+      },
     });
 
-    const payload = ticket.getPayload();
-    if (!payload?.email || !payload.sub) {
-      res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Invalid token payload")}`);
-      return;
-    }
-
-    if (!isEmailAllowed(payload.email)) {
-      logger.error(`Email domain not allowed: ${payload.email}`);
-      res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Email domain not allowed")}`);
-      return;
-    }
-
-    // Find existing user or create a new one
-    let user = await findByGoogleId(payload.sub);
-    if (user) {
-      const updated = await update(user.id, { name: payload.name, picture: payload.picture });
-      if (updated) user = updated;
+    if (result?.url) {
+      res.redirect(result.url);
     } else {
-      user = await create({ googleId: payload.sub, email: payload.email, name: payload.name, picture: payload.picture });
+      res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Failed to initiate Google sign-in")}`);
+    }
+  } catch (err) {
+    logger.error("Error initiating Google sign-in:", err);
+    res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Authentication error")}`);
+  }
+};
+
+/**
+ * GET /auth/google/callback — forward to Better Auth Google callback handler
+ */
+export const googleCallback = (req: Request, res: Response) => {
+  const queryString = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+  res.redirect(`${env.betterAuthUrl}/api/auth/callback/google${queryString}`);
+};
+
+/**
+ * GET /auth/status — returns current auth status using token-based session
+ */
+export const getStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const session = await auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+    });
+
+    if (!session?.user) {
+      res.status(401).json({ isAuthenticated: false, user: null });
+      return;
     }
 
-    // Store user identity in the session — this is what req.session.user gives you on every route
-    req.session.user = {
-      id:       user.id,
-      googleId: user.google_id,
-      email:    user.email,
-      name:     user.name ?? null,
-      picture:  user.picture ?? null,
-      isAdmin:  user.isadmin ?? null,
-    };
-
-    req.session.refreshToken = tokens.refresh_token ?? undefined;
-
-    // Explicitly save the session before redirecting.
-    // express-session writes to PrismaStore asynchronously — without save(),
-    // res.redirect() can fire before the DB write completes, causing /auth/status
-    // to return 401 on the very next request (the browser lands on /profile and
-    // the frontend immediately calls /auth/status before the session row exists).
-    req.session.save((saveErr) => {
-      if (saveErr) {
-        logger.error(`Session save error: ${saveErr.message}`);
-        res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Session save failed")}`);
-        return;
-      }
-      res.redirect(`${env.frontendUrl}/profile?status=success`);
+    res.status(200).json({
+      isAuthenticated: true,
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        picture: session.user.image ?? null,
+        isAdmin: (session.user as any).isAdmin ?? false,
+      },
     });
   } catch (err) {
-    const error = err as Error;
-    logger.error(`OAuth callback error: ${error.message}`);
-    res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent(error.message)}`);
-  }
-};
-
-// GET /auth/status — returns current session status (used by frontend to check if logged in)
-export const getStatus = (req: Request, res: Response) => {
-  if (!req.session.user) {
+    logger.error("Error in getStatus:", err);
     res.status(401).json({ isAuthenticated: false, user: null });
-    return;
   }
-  res.status(200).json({ isAuthenticated: true, user: req.session.user });
 };
 
-// POST /auth/logout — destroy the session and clear the cookie
-export const logout = (req: Request, res: Response) => {
-  if (!req.session.user) {
-    res.status(400).json({ success: false, error: "No user session found" });
-    return;
-  }
-  req.session.destroy((err) => {
-    if (err) {
-      logger.error("Logout error:", err);
-      res.status(500).json({ success: false, error: "Logout failed" });
-      return;
-    }
-    res.clearCookie("rideshare.sid");
+/**
+ * POST /auth/logout — revoke session/token via Better Auth
+ */
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    await auth.api.signOut({
+      headers: fromNodeHeaders(req.headers),
+    });
     res.status(200).json({ success: true, message: "Logged out successfully" });
-  });
+  } catch (err) {
+    logger.error("Logout error:", err);
+    res.status(500).json({ success: false, error: "Logout failed" });
+  }
 };
-

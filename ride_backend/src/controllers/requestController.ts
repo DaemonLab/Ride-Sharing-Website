@@ -23,11 +23,11 @@ export const sendRequest = asyncHandler(async (req: Request, res: Response) => {
 /** POST /request/handleRequest — ride owner accepts or rejects a join request */
 export const handleRequest = asyncHandler(async (req: Request, res: Response) => {
   const rideID = Number(req.body.rideID);
-  const requestBy = Number(req.body.requestBy);
+  const requestBy = String(req.body.requestBy);
   const { flag } = req.body;
 
-  if (!Number.isInteger(rideID) || !Number.isInteger(requestBy)) {
-    res.status(400).json({ success: false, message: "rideID and requestBy must be integers" });
+  if (!Number.isInteger(rideID) || !requestBy) {
+    res.status(400).json({ success: false, message: "rideID must be an integer and requestBy is required" });
     return;
   }
 

@@ -1,40 +1,22 @@
 import { prisma } from "../config/prisma.js";
 
-// Get a user by their internal DB id
-export async function getUserById(id: number) {
-  return prisma.users.findUnique({ where: { id } });
+// Get a user by their ID
+export async function getUserById(id: string) {
+  return prisma.user.findUnique({ where: { id } });
 }
 
-// Find a user by their Google OAuth ID
-export async function findByGoogleId(googleId: string) {
-  return prisma.users.findUnique({ where: { google_id: googleId } });
+// Find a user by their email
+export async function getUserByEmail(email: string) {
+  return prisma.user.findUnique({ where: { email } });
 }
 
-// Create a new user record after first Google OAuth sign-in
-export async function create(userData: {
-  googleId: string;
-  email: string;
-  name?: string | null;
-  picture?: string | null;
-}) {
-  return prisma.users.create({
-    data: {
-      google_id: userData.googleId,
-      email: userData.email,
-      name: userData.name,
-      picture: userData.picture,
-    },
-  });
+// Update a user's profile
+export async function update(id: string, userData: { name?: string; image?: string | null }) {
+  const data: { name?: string; image?: string | null } = {};
+  if (userData.name !== undefined && userData.name !== null) data.name = userData.name;
+  if (userData.image !== undefined) data.image = userData.image;
+
+  if (Object.keys(data).length === 0) return null;
+
+  return prisma.user.update({ where: { id }, data });
 }
-
-// Update a user's name and/or profile picture after re-login
-export async function update(id: number, userData: { name?: string | null; picture?: string | null }) {
-  const data: { name?: string | null; picture?: string | null } = {};
-  if (userData.name !== undefined) data.name = userData.name;
-  if (userData.picture !== undefined) data.picture = userData.picture;
-
-  if (Object.keys(data).length === 0) return null; // nothing to update
-
-  return prisma.users.update({ where: { id }, data });
-}
-
