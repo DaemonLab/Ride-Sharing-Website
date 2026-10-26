@@ -57,8 +57,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [location.search]);
 
   /** Redirects to Google OAuth */
-  const login = () => {
-    redirectToGoogleLogin();
+  const login = async () => {
+    await redirectToGoogleLogin();
   };
 
   /** Destroys the token session and clears local auth state */

@@ -5,11 +5,27 @@ import { logger } from "../config/logger.js";
 import { env } from "../config/env.js";
 
 /**
- * GET /auth/google — redirect user to Better Auth Google OAuth
+ * GET /auth/google — initiates Google OAuth via Better Auth and redirects to Google consent screen
  */
-export const loginRedirect = (_req: Request, res: Response) => {
-  const callbackUrl = encodeURIComponent(`${env.frontendUrl}/auth/callback`);
-  res.redirect(`${env.betterAuthUrl}/api/auth/sign-in/social?provider=google&callbackURL=${callbackUrl}`);
+export const loginRedirect = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const callbackURL = `${env.frontendUrl}/auth/callback`;
+    const result = await auth.api.signInSocial({
+      body: {
+        provider: "google",
+        callbackURL,
+      },
+    });
+
+    if (result?.url) {
+      res.redirect(result.url);
+    } else {
+      res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Failed to initiate Google sign-in")}`);
+    }
+  } catch (err) {
+    logger.error("Error initiating Google sign-in:", err);
+    res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Authentication error")}`);
+  }
 };
 
 /**
