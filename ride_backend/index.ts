@@ -12,11 +12,9 @@ async function startServer() {
     await prisma.$queryRaw`SELECT 1`;
     logger.info("Database connected.");
 
-    // Purge expired sessions on startup and every 6 hours.
-    // PrismaStore.get() already checks row.expire < new Date(), but old rows
-    // accumulate and slow down lookups without this cleanup.
+    // Purge expired Better Auth sessions on startup and every 6 hours
     async function cleanupExpiredSessions() {
-      const deleted = await prisma.session.deleteMany({ where: { expire: { lt: new Date() } } });
+      const deleted = await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
       if (deleted.count > 0) logger.info(`Session cleanup: removed ${deleted.count} expired session(s).`);
     }
     await cleanupExpiredSessions();
@@ -24,8 +22,7 @@ async function startServer() {
 
     const server = http.createServer(app);
 
-    // Pass the session middleware from app.locals so Socket.IO can read sessions
-    initSocket(server, app.locals.sessionMiddleware);
+    initSocket(server);
     registerChatHandlers();
 
     server.listen(env.port, () => {
@@ -42,5 +39,3 @@ async function startServer() {
 }
 
 startServer();
-
-

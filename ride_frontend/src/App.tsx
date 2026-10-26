@@ -21,6 +21,7 @@ const BookingSuccess = lazy(() => import("./pages/BookingSuccess"));
 const GroupMembers = lazy(() => import("./pages/GroupMembers"));
 const Chat         = lazy(() => import("./pages/Chats"));
 const NotFound     = lazy(() => import("./pages/NotFound"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 
 /** Minimal full-screen spinner shown while a page chunk is loading */
 function PageLoader() {
@@ -48,6 +49,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/signin" element={<SignIn />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/signup" element={<Navigate to="/signin" replace />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />

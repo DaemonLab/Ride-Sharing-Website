@@ -9,16 +9,10 @@ import {
 } from "../services/authService";
 
 /**
- * UI Layer — AuthProvider
+ * UI Layer — AuthProvider (Token-Based Authentication)
  *
  * Owns the global auth state (user, isAuthenticated, loading, error).
  * Populates AuthContext so any component using useAuth() can read the state.
- *
- * Key behaviour:
- * - Runs checkAuthStatus on mount (restores session after page refresh)
- * - Re-runs checkAuthStatus when the URL contains ?status=success
- *   (this is how we detect the Google OAuth callback redirect back to the frontend)
- * - After logout, always clears local state even if the server call fails
  */
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -28,11 +22,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const location = useLocation();
 
-  /** Calls /auth/status and updates local state accordingly */
+  /** Extracts token from URL if present, then calls /auth/status */
   const checkAuthStatusHandler = async () => {
     setLoading(true);
     setError(null);
     try {
+      const params = new URLSearchParams(window.location.search);
+      const tokenFromUrl = params.get("token");
+      if (tokenFromUrl) {
+        localStorage.setItem("bearer_token", tokenFromUrl);
+        params.delete("token");
+        const remaining = params.toString() ? `?${params.toString()}` : "";
+        window.history.replaceState({}, document.title, window.location.pathname + remaining);
+      }
+
       const { isAuthenticated: authed, user: userData } = await checkAuthStatus();
       setIsAuthenticated(authed);
       setUser(userData);
@@ -48,32 +51,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Single effect — runs on mount and whenever the query string changes.
-  // On every mount we always check auth (restores session after page refresh).
-  // On subsequent location.search changes we only re-check if ?status= is present
-  // (i.e. the Google OAuth redirect just landed).
-  // This avoids two concurrent checkAuthStatus() calls on the initial render
-  // when the URL is already /profile?status=success, which caused a race condition
-  // where loading briefly went false with isAuthenticated=false → ProtectedRoute
-  // kicked the user back to /signin.
   useEffect(() => {
     checkAuthStatusHandler();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  /** Redirects to Google OAuth — no API call, just a browser navigation */
-  const login = () => {
-    redirectToGoogleLogin();
+  /** Redirects to Google OAuth */
+  const login = async () => {
+    await redirectToGoogleLogin();
   };
 
-  /** Destroys the server session and clears local auth state */
+  /** Destroys the token session and clears local auth state */
   const logout = async () => {
     try {
       await logoutUser();
     } catch {
       setError("Logout failed");
     } finally {
-      // Always clear local state even if the server call fails
+      localStorage.removeItem("bearer_token");
       setIsAuthenticated(false);
       setUser(null);
     }

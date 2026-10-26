@@ -1,13 +1,51 @@
 import { getIO } from "./config/socket-config.js";
 import { getRideMembers, addMessage, getOlderMessages } from "./services/chatService.js";
 import { logger } from "./config/logger.js";
+import { auth } from "./lib/auth.js";
+import { fromNodeHeaders } from "better-auth/node";
 
 export function registerChatHandlers() {
   const io = getIO();
 
+  // Socket middleware: authenticate via Bearer token directly with Better Auth
+  io.use(async (socket, next) => {
+    try {
+      const token =
+        socket.handshake.auth?.token ||
+        (socket.handshake.headers?.authorization as string | undefined)?.replace(/^Bearer\s+/i, "");
+
+      if (!token) {
+        return next(new Error("Authentication error: No token provided"));
+      }
+
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+
+      const session = await auth.api.getSession({
+        headers: fromNodeHeaders(headers),
+      });
+
+      if (!session?.user) {
+        return next(new Error("Authentication error: Invalid or expired token"));
+      }
+
+      (socket as any).user = {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        picture: session.user.image ?? null,
+      };
+
+      next();
+    } catch (err) {
+      logger.error("Socket authentication error:", err);
+      next(new Error("Authentication failed"));
+    }
+  });
+
   io.on("connection", (socket) => {
-    const req = socket.request as any; // session is attached by initSocket via io.engine.use
-    const sessionUser = req.session?.user;
+    const sessionUser = (socket as any).user;
 
     if (!sessionUser) {
       logger.warn(`Unauthenticated socket connection rejected: ${socket.id}`);
@@ -92,7 +130,7 @@ export function registerChatHandlers() {
 
         io.to(String(numericRideId)).emit("chat message", {
           rideId: String(numericRideId),
-          user_id: String(member.id),
+          user_id: member.id,
           name: member.name ?? "Anonymous",
           message: trimmedMessage,
           timestamp: timestamp.toISOString(),
