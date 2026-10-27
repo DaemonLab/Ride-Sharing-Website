@@ -11,6 +11,8 @@ import { errorHandler } from "./middleware/errorMiddleware.js";
 import { allowedOrigins } from "./config/origins.js";
 import { loginRateLimit, apiRateLimit } from "./middleware/rateLimits.js";
 import { prisma } from "./config/prisma.js";
+import { requireCsrfHeader } from "./middleware/csrf.js";
+import { sharedStateReady } from "./config/redis.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -35,14 +37,21 @@ app.use(
       return callback(Object.assign(new Error("Origin not allowed by CORS"), { statusCode: 403 }));
     },
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
-    exposedHeaders: ["set-auth-token"],
+    allowedHeaders: ["Content-Type", "X-Requested-With"],
   })
 );
+app.use((req, res, next) => {
+  if (req.path !== "/health" && !sharedStateReady()) {
+    res.status(503).json({ status: "shared state unavailable" });
+    return;
+  }
+  next();
+});
 
 // Better Auth endpoint — mounts all Better Auth APIs (Express v5 uses *splat)
 app.use("/api/auth/sign-in", loginRateLimit);
 app.all("/api/auth/*splat", toNodeHandler(auth));
+app.use(requireCsrfHeader);
 
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
@@ -61,7 +70,7 @@ app.get("/ready", async (_req, res) => {
 app.use("/auth", loginRoutes);
 app.use(supportRoutes);
 
-// Protected API routes — require Bearer token
+// Protected API routes — require a valid session cookie.
 app.use(authenticate);
 app.use(apiRateLimit);
 app.use(apiRoutes);

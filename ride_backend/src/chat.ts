@@ -4,27 +4,16 @@ import { logger } from "./config/logger.js";
 import { auth } from "./lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
 import { chatRoomSchema, chatMessageSchema } from "./validation/chatSchemas.js";
+import { sharedState } from "./config/redis.js";
 
 export function registerChatHandlers() {
   const io = getIO();
 
-  // Socket middleware: authenticate via Bearer token directly with Better Auth
+  // Socket middleware: validate the handshake's HttpOnly session cookie.
   io.use(async (socket, next) => {
     try {
-      const token =
-        socket.handshake.auth?.token ||
-        (socket.handshake.headers?.authorization as string | undefined)?.replace(/^Bearer\s+/i, "");
-
-      if (typeof token !== "string" || !token || token.length > 4096) {
-        return next(new Error("Authentication error: No token provided"));
-      }
-
-      const headers = {
-        authorization: `Bearer ${token}`,
-      };
-
       const session = await auth.api.getSession({
-        headers: fromNodeHeaders(headers),
+        headers: fromNodeHeaders(socket.handshake.headers),
       });
 
       if (!session?.user) {
@@ -63,13 +52,24 @@ export function registerChatHandlers() {
     expiryTimer.unref();
     let windowStart = Date.now();
     let eventCount = 0;
-    socket.use((_packet, next) => {
+    socket.use(async (_packet, next) => {
       if (Date.now() - windowStart >= 60_000) { windowStart = Date.now(); eventCount = 0; }
       if (++eventCount > 60) {
         socket.emit("chat error", "Too many chat requests. Please reconnect later.");
         socket.disconnect(true);
         return;
       }
+      try {
+        if (sharedState) {
+          const count = await sharedState.rate.eval(
+            "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('PEXPIRE',KEYS[1],60000) end; return n",
+            { keys: [`rideshare:chat:${sessionUser.id}`], arguments: [] },
+          );
+          if (Number(count) > 60) { socket.disconnect(true); return; }
+        }
+        const session = await auth.api.getSession({ headers: fromNodeHeaders(socket.handshake.headers) });
+        if (!session?.user || session.user.id !== sessionUser.id) { socket.disconnect(true); return; }
+      } catch { socket.disconnect(true); return; }
       next();
     });
 

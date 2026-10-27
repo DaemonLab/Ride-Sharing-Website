@@ -1,0 +1,185 @@
+{
+  "timestamp": "2026-10-27T15:21:33.107Z",
+  "setup": {
+    "frontend": "http://127.0.0.1:4173",
+    "backend": "http://127.0.0.1:3000",
+    "node": "v24.19.0",
+    "durationMs": 6000,
+    "timeoutMs": 5000,
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "logicalCpus": 16,
+    "totalMemoryGiB": 16,
+    "freeMemoryGiB": 0.53,
+    "limitations": [
+      "Same-machine load generator; local hardware is not the IIT deployment server.",
+      "Frontend uses Vite production preview; backend is the running local development server.",
+      "Readiness uses the currently configured PostgreSQL database and executes only SELECT 1.",
+      "No authenticated searches, bookings, chat load, browser asset rendering, or soak test.",
+      "Closed-loop concurrency with pauses; observed throughput is not maximum capacity."
+    ]
+  },
+  "results": [
+    {
+      "scenario": "Frontend production HTML",
+      "concurrency": 5,
+      "requests": 69,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 9.78,
+      "latencyMs": {
+        "p50": 192.75,
+        "p95": 1464.67,
+        "p99": 1572.94,
+        "max": 1572.94
+      },
+      "statuses": {
+        "200": 69
+      },
+      "errors": {}
+    },
+    {
+      "scenario": "Frontend production HTML",
+      "concurrency": 25,
+      "requests": 321,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 51.11,
+      "latencyMs": {
+        "p50": 318.45,
+        "p95": 1368.29,
+        "p99": 1430.12,
+        "max": 1438.93
+      },
+      "statuses": {
+        "200": 321
+      },
+      "errors": {}
+    },
+    {
+      "scenario": "Frontend production HTML",
+      "concurrency": 50,
+      "requests": 297,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 48.15,
+      "latencyMs": {
+        "p50": 895.71,
+        "p95": 1575.79,
+        "p99": 1598.27,
+        "max": 1608.94
+      },
+      "statuses": {
+        "200": 297
+      },
+      "errors": {}
+    },
+    {
+      "scenario": "Backend liveness",
+      "concurrency": 5,
+      "requests": 177,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 28.69,
+      "latencyMs": {
+        "p50": 18,
+        "p95": 124.87,
+        "p99": 288.82,
+        "max": 606.96
+      },
+      "statuses": {
+        "200": 177
+      },
+      "errors": {}
+    },
+    {
+      "scenario": "Backend liveness",
+      "concurrency": 25,
+      "requests": 241,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 38.73,
+      "latencyMs": {
+        "p50": 409.54,
+        "p95": 715.36,
+        "p99": 964.6,
+        "max": 965.27
+      },
+      "statuses": {
+        "200": 241
+      },
+      "errors": {}
+    },
+    {
+      "scenario": "Backend liveness",
+      "concurrency": 50,
+      "requests": 712,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 111.27,
+      "latencyMs": {
+        "p50": 141.17,
+        "p95": 874.09,
+        "p99": 1130.82,
+        "max": 1340.11
+      },
+      "statuses": {
+        "200": 712
+      },
+      "errors": {}
+    },
+    {
+      "scenario": "Database readiness (SELECT 1)",
+      "concurrency": 1,
+      "requests": 18,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 2.96,
+      "latencyMs": {
+        "p50": 87.89,
+        "p95": 287.4,
+        "p99": 287.4,
+        "max": 287.4
+      },
+      "statuses": {
+        "200": 18
+      },
+      "errors": {}
+    },
+    {
+      "scenario": "Database readiness (SELECT 1)",
+      "concurrency": 5,
+      "requests": 83,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 13.22,
+      "latencyMs": {
+        "p50": 100.78,
+        "p95": 283.98,
+        "p99": 1107.85,
+        "max": 1107.85
+      },
+      "statuses": {
+        "200": 83
+      },
+      "errors": {}
+    },
+    {
+      "scenario": "Database readiness (SELECT 1)",
+      "concurrency": 10,
+      "requests": 172,
+      "failed": 0,
+      "errorPercent": 0,
+      "requestsPerSecond": 27.21,
+      "latencyMs": {
+        "p50": 101.76,
+        "p95": 324.42,
+        "p99": 363.64,
+        "max": 471.85
+      },
+      "statuses": {
+        "200": 172
+      },
+      "errors": {}
+    }
+  ]
+}

@@ -19,6 +19,13 @@ export function validateDeploymentConfig(input: Record<string, string | undefine
   }
   const frontendUrl = origin("FRONTEND_URL", input.FRONTEND_URL);
   const betterAuthUrl = origin("BETTER_AUTH_URL", input.BETTER_AUTH_URL || (production ? undefined : `http://localhost:${port}`));
+  if (production && betterAuthUrl !== frontendUrl) throw new Error("Cookie sessions require BETTER_AUTH_URL and FRONTEND_URL to share one HTTPS origin");
+  if (input.MULTI_INSTANCE === "true" && !input.REDIS_URL) throw new Error("REDIS_URL is required when MULTI_INSTANCE=true");
+  if (input.REDIS_URL) {
+    let redis: URL;
+    try { redis = new URL(input.REDIS_URL); } catch { throw new Error("REDIS_URL must be a valid redis:// or rediss:// URL"); }
+    if (!["redis:", "rediss:"].includes(redis.protocol)) throw new Error("REDIS_URL must use redis:// or rediss://");
+  }
   const betterAuthSecret = input.BETTER_AUTH_SECRET || input.SESSION_SECRET;
   if (!betterAuthSecret) throw new Error("Missing required env variable: BETTER_AUTH_SECRET (or SESSION_SECRET)");
   if (production && betterAuthSecret.trim().length < 32) throw new Error("BETTER_AUTH_SECRET must contain at least 32 characters in production");

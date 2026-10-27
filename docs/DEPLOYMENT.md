@@ -1,87 +1,85 @@
-# Deploying RideShare
+# Deployment and database status
 
-## Runtime and project directories
+No institute server, domain, hardware allocation, Redis service, or hosting
+arrangement is confirmed. This guide records requirements and optional templates;
+it is not evidence that a deployment or database migration has been completed.
 
-Use Node.js **24.x**. The installed Vite/Prisma versions do not support Node 18.
-Commit both lockfiles and use `npm ci` for reproducible installs.
+## Cookie-session deployment
 
-Configure two separate projects/services from the repository:
+Use Node.js 24.x. Run `npm ci` in each package, then `npm run build`. Serve
+`ride_frontend/dist` and the backend through one HTTPS origin. The frontend uses
+relative URLs and does not store or send bearer tokens.
 
-| Setting | Frontend (Vercel) | Backend (Render) |
-| --- | --- | --- |
-| Root directory | `ride_frontend` | `ride_backend` |
-| Install | `npm ci` | included in build command below |
-| Build | `npm run build` | `npm ci && npm run build` |
-| Output | `dist` | executable `dist/index.js` |
-| Start | managed static hosting | `npm start` |
-| Health check | `/` | `/ready` |
+Required reverse-proxy routes:
 
-Include devDependencies during builds: frontend TypeScript and Vite are build
-tools. Do not use `npm ci --omit=dev` for the frontend build. Do not serve the
-backend as a Vercel function; it is a persistent HTTP/WebSocket process.
+| Public route | Backend route |
+| --- | --- |
+| `/api/auth/*` | `/api/auth/*` unchanged |
+| `/backend/*` | remove `/backend`, e.g. `/backend/rides` becomes `/rides` |
+| `/backend/socket.io` | `/socket.io`, with WebSocket upgrades |
+| Other UI routes | frontend SPA fallback to index.html |
 
-## Environment configuration
+`deploy/nginx.example.conf` is an optional template with placeholder hostnames,
+paths and certificates. Do not install it unchanged. Vite supplies the local proxy
+on port 5173. For any split hosting arrangement, configure an equivalent supported
+same-origin proxy first; a static SPA fallback alone is insufficient for APIs/chat.
 
-Set these on the **backend**, without accidentally copying quote characters:
+Backend production variables:
 
 ```env
 NODE_ENV=production
-FRONTEND_URL=https://your-frontend.vercel.app
-BETTER_AUTH_URL=https://your-backend.onrender.com
-BETTER_AUTH_SECRET=<strong random secret, at least 32 characters>
+FRONTEND_URL=https://your-confirmed-public-origin
+BETTER_AUTH_URL=https://your-confirmed-public-origin
+BETTER_AUTH_SECRET=<stable random secret, at least 32 characters>
 COOKIE_SECURE=true
 ALLOWED_DOMAINS=iiti.ac.in
-DATABASE_URL=<PostgreSQL runtime connection string>
-DIRECT_URL=<PostgreSQL direct connection string for migrations>
+DATABASE_URL=<runtime PostgreSQL connection string>
+DIRECT_URL=<direct PostgreSQL connection string for migration tools>
 DATABASE_SSL=true
-GOOGLE_CLIENT_ID=<Google OAuth client ID>
-GOOGLE_CLIENT_SECRET=<Google OAuth client secret>
-EMAIL_USER_SENDER=<Gmail sender address>
-EMAIL_APP_PASSWORD=<Gmail app password>
-EMAIL_USER_RECEIVER=<support recipient address>
+GOOGLE_CLIENT_ID=<OAuth client ID>
+GOOGLE_CLIENT_SECRET=<OAuth client secret>
+EMAIL_USER_SENDER=<support sender>
+EMAIL_APP_PASSWORD=<app password>
+EMAIL_USER_RECEIVER=<support recipient>
 ```
 
-Render supplies PORT automatically; the server binds to 0.0.0.0 on that port.
-DIRECT_URL falls back to DATABASE_URL, but use a direct endpoint when runtime
-traffic uses a transaction pooler. Set DATABASE_SSL=false only for a database
-that does not require TLS, such as local development.
+Frontend VITE_BACKEND_URL may be omitted or `/backend`; absolute origins are
+rejected. Register `<BETTER_AUTH_URL>/api/auth/callback/google` in Google Cloud.
+Locally this remains `http://localhost:3000/api/auth/callback/google`. Use
+`npm start` for the built backend; it binds to PORT on 0.0.0.0. `/health` checks
+liveness; `/ready` checks DB connectivity and configured shared-state readiness.
 
-On **Vercel**, set `VITE_BACKEND_URL=https://your-backend.onrender.com` for the
-intended Production/Preview environment before building. Rebuild/redeploy after
-changing it: Vite embeds this value into the browser bundle. Do not include an
-`/api` suffix and never put database passwords or OAuth secrets in VITE_ variables.
-Build validation rejects missing backend URLs, malformed origins, and hosted
-builds pointed at localhost or HTTP. Local development still defaults to port 3000.
+## Optional shared mode
 
-FRONTEND_URL must match the browser origin exactly, including the hostname used
-for Google callbacks. Arbitrary Vercel preview domains are intentionally not
-trusted; use a separate backend/configuration for an authenticated preview.
+Set MULTI_INSTANCE=true and REDIS_URL only after a shared Redis service and
+multiple backend workers are confirmed. Use the same database, auth secret,
+origins and Redis service on all workers. Redis-backed counters cover HTTP limits
+and per-user chat event limits; its Socket.IO adapter coordinates room eviction,
+broadcasts and logout disconnects. Chat uses WebSocket-only transport. Redis
+failure makes affected requests unavailable and disconnects local sockets.
 
-## Google OAuth
+The code defaults to single-process operation without Redis. Multi-worker
+verification is opt-in using a **disposable test Redis**:
 
-In the matching Google Cloud OAuth client, register this exact redirect URI:
-
-```text
-https://your-backend.onrender.com/api/auth/callback/google
+```sh
+# Set TEST_REDIS_URL in your shell, then:
+node --import tsx --test test/redisIntegration.node.ts
 ```
 
-For local development, separately register:
+A skipped Redis integration test is not a passing cross-worker test. This service
+has not been provisioned on institute infrastructure.
 
-```text
-http://localhost:3000/api/auth/callback/google
-```
+## Existing database: reconciliation is pending
 
-The older `/auth/google/callback` value in previous setup instructions is not the
-URI the current Better Auth integration sends to Google. Also check the OAuth
-consent screen's publishing status and test users. Keep the auth secret stable
-across deployments; rotating it invalidates existing signed cookies/OAuth state.
+A read-only comparison found seven foreign keys and four updatedAt defaults that
+differ from the schema. `docs/align-existing-database.sql` is a transactional
+review plan, not an applied migration. The database's data classification is
+unknown, so no live changes or migration-baseline writes were made.
 
-## Database: fresh versus existing
+Before applying anything, confirm the intended database, owner, backup/recovery
+procedure, existing migration history, and an appropriate release window.
 
-There is now a committed initial migration at
-`ride_backend/prisma/migrations/20261027000000_initial/migration.sql`.
-
-For a **new, empty database**, run from `ride_backend`:
+For a **new, empty database**, from ride_backend:
 
 ```sh
 npm run db:migrate:deploy
@@ -89,24 +87,18 @@ npm run build
 npm run deploy:check
 ```
 
-For the **existing configured database**, a read-only comparison on 27 October
-2026 found drift in seven foreign keys and four updatedAt defaults. The proposed
-transactional reconciliation is [align-existing-database.sql](align-existing-database.sql).
-It has not been applied. Do not run the fresh initial migration on existing
-tables: Prisma can reject this with P3005, or a repeated CREATE TABLE can fail.
+For the **existing database**:
 
-1. Back up the intended database and review the reconciliation SQL against its
-   current schema. The script recreates foreign keys with the checked-in schema's
-   cascade behavior and removes updatedAt defaults; it does not drop tables/data.
-2. Have the database owner apply the reviewed reconciliation transaction.
-3. Verify that the schema comparison reports no differences:
+1. Obtain a backup and review the reconciliation SQL against its current schema.
+   It recreates foreign keys and removes defaults; it does not drop tables/data.
+2. The database owner applies the reviewed transaction.
+3. Run the read-only comparison and require zero differences:
 
    ```sh
    npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
    ```
 
-4. Only after verifying the schema and checking any existing migration history,
-   baseline the initial migration instead of executing its CREATE statements:
+4. After checking migration history and confirming the schema matches, baseline:
 
    ```sh
    npx prisma migrate resolve --applied 20261027000000_initial
@@ -114,50 +106,21 @@ tables: Prisma can reject this with P3005, or a repeated CREATE TABLE can fail.
    npm run deploy:check
    ```
 
-Do not use `migrate reset`, `db push --accept-data-loss`, or `migrate dev` on
-production. Future deployments should run `npm run db:migrate:deploy` as a release
-step after this one-time baseline; the build itself does not modify the database.
-If the platform lacks a release/pre-deploy step, run the migration once through
-its shell or CI before starting the new app version.
+Do not execute the initial CREATE TABLE migration against existing tables. Do not
+use migrate reset, migrate dev, or db push --accept-data-loss on production.
+Future schema changes use reviewed migrations and migrate deploy as a release
+step. Builds and deploy:check do not modify the database.
 
-`npm run deploy:check` is read-only and needs a successful build first. It checks
-runtime configuration plus all scalar columns in the seven Prisma models,
-without logging user data. `/health` is liveness; `/ready` also tests database
-connectivity. Readiness does not replace migration/schema verification.
+## Remaining verification
 
-## Mail and hosting limits
+The three-user simulation uses real signed-cookie validation and real local HTTP/
+WebSocket connections, but in-memory sessions and mocked ride records. It does
+not verify production Google OAuth, live booking transactions or Redis availability.
+An independent penetration test and sustained workload testing remain outstanding.
 
-The contact form uses Gmail SMTP. Render free services block outbound ports 465
-and 587, and Render blocks port 25 on all services. Contact delivery therefore
-requires a hosting plan that permits Gmail SMTP, or an implementation using an
-HTTPS email provider. SMTP calls now have bounded connection/socket timeouts;
-these prevent indefinite hangs but do not bypass hosting restrictions.
+Confirm SMTP network access before enabling support delivery; some hosting plans
+block Gmail SMTP ports. No provider/college plan is assumed here.
 
-Free service cold starts can also delay the first login or API request. Before
-scaling to multiple backend instances, add shared rate-limit storage and a
-Socket.IO adapter; current limits and room revocation are process-local.
-
-## Release checks and failure diagnosis
-
-- `npm ci`: lockfile mismatch or unsupported Node => select Node 24 and commit
-  synchronized package.json/package-lock.json files.
-- `npm run build`: missing VITE_BACKEND_URL => set it in the frontend build
-  environment. Missing TypeScript/Vite => include build devDependencies.
-- Startup missing-env error => populate every required backend variable above.
-  Startup DB error => verify network allowlists, connection strings, SSL, and
-  schema baseline/migrations. No environment secrets are required for builds.
-- Google `redirect_uri_mismatch` => match BETTER_AUTH_URL and the exact registered
-  callback. Login/CORS failure => match FRONTEND_URL to the current browser origin.
-- API calls to localhost, mixed-content errors, or stale configuration => fix the
-  Vercel build environment and redeploy the frontend.
-- Direct `/profile`, `/find`, or `/auth/callback` returns 404 => ensure the frontend
-  project's root is ride_frontend so Vercel reads its SPA rewrite configuration.
-- `/ready` returns 503 => inspect backend database connectivity. The response
-  intentionally does not expose the connection string or internal error.
-- Check a fresh login in Chrome, Safari and Brave, an authorized two-user ride
-  flow, WebSocket reconnect, and actual support delivery on the deployed host.
-
-References: [Render Node versions](https://render.com/docs/node-version),
-[Render free-service restrictions](https://render.com/docs/free),
-[Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite),
+References: [Better Auth cookies](https://better-auth.com/docs/concepts/cookies),
+[Socket.IO Redis adapter](https://socket.io/docs/v4/redis-adapter),
 [Prisma baselining](https://www.prisma.io/docs/orm/prisma-migrate/workflows/baselining).

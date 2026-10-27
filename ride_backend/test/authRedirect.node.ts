@@ -76,6 +76,9 @@ test("OAuth cookies support top-level callbacks without disabling state validati
   assert.equal(auth.options.advanced?.defaultCookieAttributes?.sameSite, "lax");
   assert.equal(auth.options.advanced?.defaultCookieAttributes?.secure, true);
   assert.notEqual(auth.options.account?.skipStateCookieCheck, true);
+  assert.equal(auth.options.advanced?.defaultCookieAttributes?.httpOnly, true);
+  assert.equal(auth.options.hooks?.after, undefined);
+  assert.equal(auth.options.plugins?.some(plugin => plugin.id === 'bearer'), undefined);
 });
 
 test("HTTP security boundaries reject untrusted origins, bad input, and contact flooding", async (t) => {
@@ -98,15 +101,17 @@ test("HTTP security boundaries reject untrusted origins, bad input, and contact 
   assert.equal((await fetch(`${base}/user/profile`)).status, 401);
   for (let attempt = 0; attempt < 5; attempt++) {
     const response = await fetch(`${base}/contact`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       body: JSON.stringify({ name: { malicious: true } }),
     });
     assert.equal(response.status, 400);
   }
-  const limited = await fetch(`${base}/contact`, { method: "POST" });
+  const limited = await fetch(`${base}/contact`, { method: "POST", headers: { "X-Requested-With": "XMLHttpRequest" } });
   assert.equal(limited.status, 429);
   const malformed = await fetch(`${base}/contact`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: "{bad json",
+    method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }, body: "{bad json",
   });
   assert.equal(malformed.status, 400);
+  assert.equal((await fetch(`${base}/auth/logout`, { method: "POST" })).status, 403);
+  assert.equal((await fetch(`${base}/auth/status`, { headers: { Authorization: "Bearer raw-session-token" } })).status, 401);
 });

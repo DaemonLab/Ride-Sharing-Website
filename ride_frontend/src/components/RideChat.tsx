@@ -43,15 +43,10 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
     setLoading(true);
     setError(null);
 
-    // Create the socket connection with Bearer token authentication
-    const token = localStorage.getItem('bearer_token');
-    socketRef.current = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000', {
-      auth: {
-        token,
-      },
-      extraHeaders: token ? {
-        Authorization: `Bearer ${token}`,
-      } : undefined,
+    // Use the same-origin proxy so the browser sends its HttpOnly cookie.
+    socketRef.current = io(window.location.origin, {
+      path: '/backend/socket.io',
+      transports: ['websocket'],
       withCredentials: true,
     });
     const socket = socketRef.current;

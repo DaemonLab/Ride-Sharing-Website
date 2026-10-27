@@ -1,281 +1,151 @@
-# 🚗 Campus Ride-Sharing Platform
+# Campus RideShare
 
-A modern, secure, full-stack campus ride-sharing and carpooling web application built for college communities (IIT Indore). Students can offer rides, find existing carpools, manage join requests with real-time feedback, and communicate in dedicated group chats.
+A TypeScript ride-sharing application for a campus community. Students can offer
+rides, search routes, request seats, manage bookings, and chat with ride members.
 
----
+## Current status
 
-## 🌟 Key Features
+This repository contains the application and local verification tools. An IIT
+Indore deployment, institute domain, server specifications, Redis service, and
+500-user capacity are **not confirmed**. No institute infrastructure has been
+configured by these changes.
 
-- **🔐 Domain-Restricted Google OAuth 2.0**: Ensures only verified institutional emails (`@iiti.ac.in`) can sign up and access the platform.
-- **🛡️ Server-Side Session Management**: Stateful session persistence backed by PostgreSQL (`session` table) with HTTP-only, SameSite cookies.
-- **⚡ Atomic Ride Request Lifecycle**: Prevents race conditions and over-booking using Prisma database transactions (`prisma.$transaction`).
-  - Strict re-request guards against spamming after rejection or leaving.
-  - Real-time seat decrement on approval.
-- **💬 Real-Time Ride Group Chat**: WebSockets via **Socket.IO** shared over the same authenticated Express session.
-- **🔍 Smart Search & Filtering**: Multi-criteria search (origin, destination, date, time window) with client-side and server-side filtering.
-- **📱 Responsive, Modern UI**: Designed with glassmorphism aesthetics, TailwindCSS, and fluid tab animations using Framer Motion.
-- **📧 Contact & Support System**: Automated dual-email delivery (inquiry notification to admin + auto-reply confirmation to student) powered by Nodemailer.
+The current security update replaces browser bearer tokens with HttpOnly cookie
+sessions. Production use requires a same-origin reverse proxy; this is a setup
+requirement, not a claim that any hosting provider or college server is ready.
+Existing browser tokens are removed during the update. Users must sign in again.
 
----
+## Features
 
-## 🏗️ Architecture & Project Structure
+- Google sign-in restricted to verified emails from configured domains.
+- Ride offers, paginated route/date/time search, and owner-controlled requests.
+- Transactional acceptance, seat updates, cancellation, and leaving a ride.
+- Ride membership checks for group details, chat history, and messages.
+- Responsive React interface, profile pages, and contact form.
+- Input validation, request throttling, CSRF headers, and error handling.
 
-The project follows clean separation of concerns with layered architecture:
+## Stack and structure
 
-```
-Ride-Sharing-Website/
-├── ride_backend/                 # Node.js + Express + TypeScript Backend
-│   ├── prisma/
-│   │   └── schema.prisma         # Prisma ORM Schema & PostgreSQL Models
-│   ├── src/
-│   │   ├── config/               # Env validation, Logger (Winston), Prisma, Socket.IO
-│   │   ├── controllers/          # Request handlers & HTTP responses
-│   │   ├── middleware/           # Auth guard, Error handling, Session middleware
-│   │   ├── routes/               # Modular Express route registries
-│   │   ├── services/             # Core business logic & database queries
-│   │   ├── utils/                # Async handler wrappers, domain validator
-│   │   ├── validation/           # Zod input schemas for runtime validation
-│   │   ├── app.ts                # Express app setup & middleware pipeline
-│   │   ├── chat.ts               # Socket.IO event handlers
-│   │   └── server.ts             # HTTP server & WebSocket bootstrap
-│   └── test/                     # Jest test suites
-│
-└── ride_frontend/                # React 18 + Vite + TypeScript Frontend
-    ├── src/
-    │   ├── api/                  # Axios HTTP client calls & response normalization
-    │   ├── components/           # Reusable UI components (Modals, Pickers, Chat)
-    │   ├── hooks/                # Custom React hooks (useAuth, useRides, useRideRequests)
-    │   ├── pages/                # Route views (Home, Find, Offer, Profile, Chat, BookRide)
-    │   ├── services/             # Frontend service abstraction layer
-    │   ├── types/                # Shared TypeScript interfaces & types
-    │   └── App.tsx               # Root component & route definitions
+- Frontend: React 18, Vite, TypeScript, TailwindCSS, React Router, Socket.IO client.
+- Backend: Node.js 24, Express 5, Better Auth, Prisma, PostgreSQL, Socket.IO.
+- Optional shared infrastructure: Redis rate-limit stores and Socket.IO adapter.
+
+```text
+ride_frontend/src/   React pages, components, API clients, hooks and services
+ride_backend/src/    Express routes, controllers, services, auth and validation
+ride_backend/index.ts  HTTP/WebSocket startup and graceful shutdown
+ride_backend/prisma/  Schema and initial migration
+ride_backend/test/    Automated checks
+scripts/load-test.mjs Bounded, read-only local load probe
 ```
 
----
+User IDs are strings from Better Auth. PostgreSQL models are User, Session,
+Account, Verification, rides, requests and groupChat. The current schema is in
+`ride_backend/prisma/schema.prisma`; older numeric-user diagrams are obsolete.
 
-## 🗄️ Database Schema
+## Local setup
 
-Managed via **Prisma ORM** on PostgreSQL:
+Install Node.js 24.x, provide a PostgreSQL database, and configure a Google OAuth
+client. Do not commit credentials.
 
-```mermaid
-erDiagram
-    users ||--o{ rides : "creates"
-    users ||--o{ requests : "sends"
-    users ||--o{ groupChat : "sends"
-    rides ||--o{ requests : "has"
-    rides ||--o{ groupChat : "contains"
+1. Copy `ride_backend/.env.example` to `ride_backend/.env` and fill in the required
+   database, OAuth, secret, allowed-domain and support-email values.
+2. Local defaults are FRONTEND_URL=http://localhost:5173 and
+   BETTER_AUTH_URL=http://localhost:3000, with COOKIE_SECURE=false.
+3. Register `http://localhost:3000/api/auth/callback/google` in the Google OAuth
+   client. It must match BETTER_AUTH_URL plus `/api/auth/callback/google`.
+4. Install dependencies in both directories with `npm ci`.
+5. For a **new empty database**, apply `npm run db:migrate:deploy` from the backend.
+   For an existing database, first follow the deployment guide's baseline steps.
+6. Run `npm run dev` in each directory, in separate terminals. Open
+   `http://localhost:5173`.
 
-    users {
-        int id PK
-        string google_id UK
-        string email
-        string name
-        string picture
-        boolean isadmin
-    }
+The frontend uses `/backend` for application requests and `/backend/socket.io`
+for WebSockets. Vite proxies these to port 3000 locally. It also proxies
+`/api/auth` for Better Auth. Browser requests carry cookies and an
+`X-Requested-With: XMLHttpRequest` header for mutations. Login does not put
+session tokens in the callback URL or localStorage.
 
-    rides {
-        int rideID PK
-        int createdBy FK
-        string source
-        string destination
-        string date
-        string time
-        int seatsAvailable
-        int totalSeats
-        float totalCost
-        string vehicleType
-        string rideStatus
-    }
+VITE_BACKEND_URL can be omitted or set to `/backend`. Absolute browser API URLs
+are rejected by the build to prevent accidentally restoring cross-site cookies.
 
-    requests {
-        int id PK
-        int rideID FK
-        int createdBy
-        int requestBy FK
-        string rideStatus
-        string requestStatus
-    }
+## Production requirements — hosting not selected
 
-    groupChat {
-        int id PK
-        int rideID FK
-        int messageBy FK
-        string rideOwner
-        string message
-        string messageTime
-        string messageDate
-    }
+Serve the frontend and proxy the backend through the **same HTTPS origin**:
 
-    session {
-        string sid PK
-        json sess
-        datetime expire
-    }
-```
+- `/api/auth/*` forwards unchanged to the backend.
+- `/backend/*` forwards to the backend with `/backend` stripped.
+- WebSocket upgrades on `/backend/socket.io` must reach backend `/socket.io`.
+- Other frontend routes fall back to `index.html`.
 
----
+Set FRONTEND_URL and BETTER_AUTH_URL to that public HTTPS origin and
+COOKIE_SECURE=true. Register the resulting `/api/auth/callback/google` URL with
+Google. A generic optional proxy example is in `deploy/nginx.example.conf`; it
+must be adapted after the host, domain and certificate are confirmed. This is
+not an installed or active college-server configuration.
 
-## 🔌 API Endpoints Summary
+If retaining Vercel/Render or another split-host setup, configure equivalent
+same-origin proxy rules first. The SPA-only Vercel configuration does not by
+itself proxy the backend, and Vercel rewrites alone do not provide the persistent
+WebSocket proxy needed for chat. Choose a supported proxy/hosting arrangement
+before deploying this cookie-session update.
 
-### Authentication (`/auth`)
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| `GET` | `/auth/google` | No | Initiates Google OAuth flow |
-| `GET` | `/auth/google/callback` | No | Handles OAuth callback & session creation |
-| `GET` | `/auth/status` | No | Returns authenticated user session info |
-| `POST` | `/auth/logout` | Yes | Destroys session and clears cookie |
+### Optional multiple-instance mode
 
-### Rides (`/rides`)
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| `GET` | `/rides/availableRides` | Yes | Get all active, future rides with available seats |
-| `POST` | `/rides/filteredAvailableRides` | Yes | Search rides matching source/dest/date/time |
-| `POST` | `/rides/addRide` | Yes | Post a new ride offering |
-| `GET` | `/rides/upcomingRides` | Yes | Get pending rides user created or joined |
-| `GET` | `/rides/completedRides` | Yes | Get completed past rides |
-| `GET` | `/rides/:rideID/group` | Yes | Fetch confirmed group members for a ride |
-| `POST` | `/rides/:rideID/cancel` | Yes | Cancel ride (Ride Owner only) |
-| `POST` | `/rides/:rideID/leave` | Yes | Leave ride & release seat (Passenger only) |
+Single-process local development does not require Redis. To deploy more than
+one backend process, set MULTI_INSTANCE=true and REDIS_URL to a shared Redis
+service. Each worker must use the same database, auth secret, origins and Redis
+service. The code uses Redis for HTTP rate limits and Socket.IO room operations;
+WebSocket-only transport avoids polling sticky-session requirements. Startup
+requires Redis connectivity when configured, and Redis loss rejects affected
+requests and disconnects local sockets rather than silently falling back.
 
-### Join Requests (`/request`)
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| `POST` | `/request/sendRequest` | Yes | Submit request to join a ride |
-| `POST` | `/request/handleRequest` | Yes | Accept or reject request (Ride Owner only) |
-| `GET` | `/request/requestsSent` | Yes | List pending requests sent by user |
-| `GET` | `/request/requestsReceived` | Yes | List pending requests on user's rides |
+Redis availability and actual multi-server operation have not been confirmed or
+verified on institute infrastructure. Do not mark this setup deployed based on
+the presence of configuration code alone.
 
-### Support & Contact
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| `POST` | `/contact` | No | Submit contact/support message |
-| `GET` | `/health` | No | Health check endpoint |
+## Database status
 
----
+A previous read-only comparison found foreign-key and updatedAt-default drift.
+The review script is `docs/align-existing-database.sql`. It has **not been applied**,
+and the configured database's data classification is unknown. No live schema or
+student records were changed as part of this security update. Confirm ownership,
+backup/recovery and the target environment before reconciling and baselining it.
 
-## 🛠️ Tech Stack
+See [deployment and database steps](docs/DEPLOYMENT.md).
 
-### Backend
-- **Runtime**: Node.js (ES Modules)
-- **Language**: TypeScript
-- **Framework**: Express.js
-- **Database / ORM**: PostgreSQL + Prisma ORM
-- **Authentication**: Better Auth with Prisma sessions and bearer tokens
-- **Real-Time Communication**: Socket.IO
-- **Validation**: Zod
-- **Email Service**: Nodemailer
-- **Testing**: Jest + ts-jest
+## Verification
 
-### Frontend
-- **Framework**: React 18 + Vite
-- **Language**: TypeScript
-- **Routing**: React Router v7
-- **Styling**: TailwindCSS + Vanilla CSS (Glassmorphism)
-- **Animations**: Framer Motion + Lucide React icons
-- **State & HTTP**: Custom React Hooks + Axios
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 24.x (required by the deployment configuration)
-- PostgreSQL database
-- Google Cloud Console OAuth 2.0 Credentials
-- Gmail App Password (for Nodemailer support emails)
-
----
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/DaemonLab/Ride-Sharing-Website.git
-cd Ride-Sharing-Website
-```
-
----
-
-### 2. Backend Setup
-```bash
-cd ride_backend
-npm install
-```
-
-Create `.env` inside `ride_backend/`:
-```env
-PORT=3000
-NODE_ENV=development
-DATABASE_URL="postgresql://username:password@localhost:5432/rideshare?schema=public"
-DATABASE_SSL=false
-BETTER_AUTH_SECRET="replace-with-a-random-secret-at-least-32-characters-long"
-BETTER_AUTH_URL="http://localhost:3000"
-FRONTEND_URL="http://localhost:5173"
-GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
-ALLOWED_DOMAINS="iiti.ac.in"
-EMAIL_USER_SENDER="your-email@gmail.com"
-EMAIL_APP_PASSWORD="your-app-password"
-EMAIL_USER_RECEIVER="admin-support@rideshare.com"
-COOKIE_SECURE=false
-COOKIE_SAME_SITE=lax
-```
-
-For a fresh empty database, apply the committed migrations (existing databases
-must first follow the baseline procedure in [the deployment guide](docs/DEPLOYMENT.md)):
-```bash
-npm run db:migrate:deploy
-npm run prisma:generate
-```
-
-Start the backend server:
-```bash
-npm run dev
-```
-
----
-
-### 3. Frontend Setup
-```bash
-cd ../ride_frontend
-npm install
-```
-
-Create `.env` inside `ride_frontend/`:
-```env
-VITE_BACKEND_URL="http://localhost:3000"
-```
-
-Start Vite development server:
-```bash
-npm run dev
-```
-
-The frontend will run at `http://localhost:5173`.
-
----
-
-## 🧪 Testing
-
-Run backend Jest test suites:
-```bash
-cd ride_backend
-npm test
-```
-
-Type-check both workspaces:
-```bash
+```sh
 # Backend
-cd ride_backend && npm run typecheck
+cd ride_backend
+npm run build
+npm test
+npm run deploy:check  # read-only; needs a build and configured database
 
-# Frontend
-cd ride_frontend && npm run build
+# Frontend, from its directory
+npm run lint
+npm run test:deployment
+npm run build
 ```
 
----
+Automated checks and local simulations are not an independent penetration test.
+Production OAuth, multiple real users, SMTP delivery, Redis-backed cross-worker
+revocation, sustained load and the eventual hosting environment still need
+verification. Run security tests against dedicated test accounts/data, not
+unclassified student data.
 
-## 🛡️ Security & Reliability Highlights
+The saved local load probe tested lightweight endpoints only. Its results are
+not a verified capacity estimate for 500 concurrent students or the IIT server.
 
-1. **Zero Client Trust for Identity**: All user identities are resolved on the server from `req.session.user.id`. The frontend cannot spoof identity in request bodies.
-2. **Atomic Concurrency**: Transactions prevent race conditions during concurrent ride booking requests.
-3. **Authentication**: Better Auth validates sessions. Browser bearer tokens are stored in localStorage; see the security review for the associated limitations.
-4. **Input Validation**: All incoming requests pass strict Zod schemas before hitting business logic.
+## Security and operational limits
+
+- HttpOnly cookies reduce direct token theft but do not make XSS harmless.
+- Shared rate-limit/socket behavior requires a working configured Redis service.
+- Database reconciliation and baseline remain pending.
+- Gmail SMTP requires outbound SMTP access; some hosting plans block it.
+- No external penetration test or confirmed institute deployment has occurred.
+
+Historical review: [security review](docs/SECURITY_REVIEW_2026-10-27.md).
+That document describes an earlier revision; this README records the current
+cookie-session update and its pending deployment requirements.

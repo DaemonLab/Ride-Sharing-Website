@@ -25,8 +25,7 @@ declare global {
 }
 
 /**
- * Token-based authenticate middleware (Bearer token).
- * Validates the token with Better Auth and attaches the user directly to the request.
+ * Validates the cookie session and attaches the server-resolved identity.
  */
 export const authenticate = async (
   req: Request,
@@ -34,12 +33,16 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const session = await auth.api.getSession({
+    const result = await auth.api.getSession({
       headers: fromNodeHeaders(req.headers),
+      returnHeaders: true,
     });
+    const cookies = result.headers.getSetCookie();
+    if (cookies.length) res.setHeader("Set-Cookie", cookies);
+    const session = result.response;
 
     if (!session?.user) {
-      res.status(401).json({ message: "Unauthorized: Missing or invalid token" });
+      res.status(401).json({ message: "Unauthorized: Missing or invalid session" });
       return;
     }
 

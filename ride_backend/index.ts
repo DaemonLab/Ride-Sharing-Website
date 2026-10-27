@@ -5,9 +5,11 @@ import { registerChatHandlers } from "./src/chat.js";
 import { prisma } from "./src/config/prisma.js";
 import { logger } from "./src/config/logger.js";
 import { env } from "./src/config/env.js";
+import { connectSharedState, closeSharedState } from "./src/config/redis.js";
 
 async function startServer() {
   try {
+    await connectSharedState();
     // Verify the database is reachable before accepting requests
     await prisma.$queryRaw`SELECT 1`;
     logger.info("Database connected.");
@@ -42,7 +44,7 @@ async function startServer() {
       const deadline = setTimeout(() => process.exit(1), 10_000);
       deadline.unref();
       io.close(() => {
-        prisma.$disconnect().then(() => process.exit(0)).catch(() => process.exit(1));
+        Promise.all([prisma.$disconnect(), closeSharedState()]).then(() => process.exit(0)).catch(() => process.exit(1));
       });
     };
     process.once("SIGTERM", shutdown);

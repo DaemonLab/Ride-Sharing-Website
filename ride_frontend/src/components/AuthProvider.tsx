@@ -9,7 +9,7 @@ import {
 } from "../services/authService";
 
 /**
- * UI Layer — AuthProvider (Token-Based Authentication)
+ * UI Layer — AuthProvider (HttpOnly cookie sessions)
  *
  * Owns the global auth state (user, isAuthenticated, loading, error).
  * Populates AuthContext so any component using useAuth() can read the state.
@@ -22,17 +22,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const location = useLocation();
 
-  /** Extracts token from URL if present, then calls /auth/status */
+  /** Remove legacy token material, then validate the cookie session. */
   const checkAuthStatusHandler = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams(window.location.search);
-      const fragment = new URLSearchParams(window.location.hash.slice(1));
-      const tokenFromUrl = window.location.pathname === "/auth/callback"
-        ? fragment.get("token") ?? params.get("token") : null;
-      if (tokenFromUrl) {
-        localStorage.setItem("bearer_token", tokenFromUrl);
+      // Remove legacy browser tokens during the cookie-session migration.
+      try { localStorage.removeItem("bearer_token"); } catch { /* Storage may be disabled; cookie auth still works. */ }
+      if (window.location.pathname === "/auth/callback") {
         params.delete("token");
         const remaining = params.toString() ? `?${params.toString()}` : "";
         window.history.replaceState({}, document.title, window.location.pathname + remaining);
@@ -66,12 +64,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     try {
       await logoutUser();
-    } catch {
-      setError("Logout failed");
-    } finally {
-      localStorage.removeItem("bearer_token");
       setIsAuthenticated(false);
       setUser(null);
+    } catch {
+      setError("Unable to sign out. Please try again.");
     }
   };
 
