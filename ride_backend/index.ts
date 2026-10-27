@@ -18,24 +18,37 @@ async function startServer() {
       if (deleted.count > 0) logger.info(`Session cleanup: removed ${deleted.count} expired session(s).`);
     }
     await cleanupExpiredSessions();
-    setInterval(() => {
+    const cleanupTimer = setInterval(() => {
       cleanupExpiredSessions().catch((error) => logger.error("Session cleanup failed:", error));
     }, 6 * 60 * 60 * 1000); // every 6 hours
 
     const server = http.createServer(app);
 
-    initSocket(server);
+    const io = initSocket(server);
     registerChatHandlers();
 
-    server.listen(env.port, () => {
-      logger.info(`Server running on http://localhost:${env.port}`);
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(env.port, "0.0.0.0", resolve);
     });
+    logger.info(`Server listening on port ${env.port}`);
 
     // Graceful shutdown — finish in-flight requests before exiting
-    process.once("SIGTERM", () => server.close(() => process.exit(0)));
-    process.once("SIGINT",  () => server.close(() => process.exit(0)));
+    let shuttingDown = false;
+    const shutdown = () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      clearInterval(cleanupTimer);
+      const deadline = setTimeout(() => process.exit(1), 10_000);
+      deadline.unref();
+      io.close(() => {
+        prisma.$disconnect().then(() => process.exit(0)).catch(() => process.exit(1));
+      });
+    };
+    process.once("SIGTERM", shutdown);
+    process.once("SIGINT", shutdown);
   } catch (error) {
-    logger.error("Startup failed:", (error as Error).message);
+    logger.error(`Startup failed: ${(error as Error).message}`);
     process.exit(1);
   }
 }

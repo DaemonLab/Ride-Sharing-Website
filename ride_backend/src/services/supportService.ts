@@ -6,6 +6,9 @@ import { escapeHtml } from "../validation/supportSchemas.js";
 function createTransporter() {
   return nodemailer.createTransport({
     service: "gmail",
+    connectionTimeout: 15_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
     auth: { user: env.emailSender, pass: env.emailPassword },
   });
 }

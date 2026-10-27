@@ -10,6 +10,9 @@ import "dotenv/config";
  */
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 10_000,
+  max: 5,
+  ...(process.env.DATABASE_SSL === "false" ? { ssl: false } : {}),
 });
 
 export const prisma = new PrismaClient({ adapter });

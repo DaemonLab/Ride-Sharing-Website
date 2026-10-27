@@ -10,6 +10,7 @@ import { authenticate } from "./middleware/authMiddleware.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 import { allowedOrigins } from "./config/origins.js";
 import { loginRateLimit, apiRateLimit } from "./middleware/rateLimits.js";
+import { prisma } from "./config/prisma.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -47,6 +48,14 @@ app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
 app.get("/health", (_req, res) => res.json({ status: "OK" }));
+app.get("/ready", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "OK" });
+  } catch {
+    res.status(503).json({ status: "unavailable" });
+  }
+});
 
 // Public routes (login bridge, callback, logout, status, support)
 app.use("/auth", loginRoutes);
