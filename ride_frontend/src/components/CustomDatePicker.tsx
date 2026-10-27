@@ -133,7 +133,7 @@ export default function CustomDatePicker({
 
       {/* Floating Opaque Calendar Popover */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 z-50 w-72 bg-white border border-outline-variant/40 rounded-2xl p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute top-full left-0 mt-2 z-50 w-full max-w-72 bg-white border border-outline-variant/40 rounded-2xl p-3 sm:p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
           {/* Header Controls */}
           <div className="flex items-center justify-between mb-3 px-1">
             <h4 className="font-display font-bold text-sm text-ink">

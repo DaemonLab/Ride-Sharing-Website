@@ -27,7 +27,7 @@ export default function Header() {
     <>
       <header className="fixed top-0 z-50 w-full px-3 pt-3 sm:px-4">
         <div className="container mx-auto rounded-2xl border border-white/80 bg-gradient-to-r from-white/90 via-[#f4f8ff]/90 to-[#effffb]/90 px-4 shadow-[0_10px_30px_rgba(46,123,255,0.14)] backdrop-blur-xl md:px-6">
-        <div className="flex h-[4.5rem] items-center justify-between">
+        <div className="flex h-[4.5rem] items-center justify-between gap-3">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-glow">
@@ -63,7 +63,7 @@ export default function Header() {
                   to="/profile"
                   className="flex items-center gap-2 pl-3 pr-1 py-1 rounded-full glass hover:border-primary/40 transition-all group"
                 >
-                  <span className="text-sm font-medium text-ink-variant group-hover:text-ink">
+                  <span className="max-w-28 truncate text-sm font-medium text-ink-variant group-hover:text-ink">
                     {user?.name?.split(" ")[0] ?? "Profile"}
                   </span>
                   <span className="w-8 h-8 rounded-full overflow-hidden bg-surface-container flex items-center justify-center border border-primary/20">
@@ -96,8 +96,11 @@ export default function Header() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 rounded-lg glass"
+            className="lg:hidden shrink-0 p-3 rounded-lg glass"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-navigation"
           >
             {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -105,7 +108,7 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="pb-4 md:hidden">
+          <div id="mobile-navigation" className="max-h-[calc(100dvh-6rem)] overflow-y-auto pb-4 lg:hidden">
             <nav className="glass-card p-4 flex flex-col gap-1">
               {navItems.map((item) => (
                 <Link
