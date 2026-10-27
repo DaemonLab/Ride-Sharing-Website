@@ -31,7 +31,7 @@ export const env = {
   frontendUrl:        (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, ""),
   googleClientId:     process.env.GOOGLE_CLIENT_ID!,
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-  allowedDomains:     process.env.ALLOWED_DOMAINS!.split(",").map(d => d.trim()),
+  allowedDomains:     process.env.ALLOWED_DOMAINS!.split(",").map(d => d.trim().toLowerCase()).filter(Boolean),
   emailSender:        process.env.EMAIL_USER_SENDER!,
   emailPassword:      process.env.EMAIL_APP_PASSWORD!,
   emailReceiver:      process.env.EMAIL_USER_RECEIVER!,

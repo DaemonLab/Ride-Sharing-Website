@@ -14,7 +14,9 @@ export function errorHandler(error: Error, _req: Request, res: Response, _next: 
   }
 
   // 2. Domain / business logic error — e.g. "Ride not found", "Not the owner"
-  const statusCode = (error as any).statusCode || 500;
+  const candidate = (error as Error & { statusCode?: number; status?: number }).statusCode
+    ?? (error as Error & { status?: number }).status;
+  const statusCode = Number.isInteger(candidate) && candidate! >= 400 && candidate! <= 599 ? candidate! : 500;
   logger.error(`${statusCode} — ${error.message}`);
 
   res.status(statusCode).json({

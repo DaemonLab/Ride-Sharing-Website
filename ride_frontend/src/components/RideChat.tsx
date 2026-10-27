@@ -17,15 +17,16 @@ interface Message {
 }
 
 interface Member {
-  id?: number;
+  id?: string;
   user_id?: string;
-  name: string;
+  name: string | null;
 }
 
 export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const chatRef = useRef<HTMLDivElement>(null);
   const [showMembers, setShowMembers] = useState(false);
@@ -37,6 +38,10 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
 
   useEffect(() => {
     if (!rideID) return;
+    setMessages([]);
+    setMembers([]);
+    setLoading(true);
+    setError(null);
 
     // Create the socket connection with Bearer token authentication
     const token = localStorage.getItem('bearer_token');
@@ -51,13 +56,15 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
     });
     const socket = socketRef.current;
 
-    socket.emit('joinRoom', { rideId: rideID });
+    socket.on('connect', () => {
+      setError(null);
+      socket.emit('joinRoom', { rideId: rideID });
+      socket.emit('getOlderMessages', { rideId: rideID });
+    });
 
     socket.on('ride members', (memberList: Member[]) => {
       setMembers(memberList);
     });
-
-    socket.emit('getOlderMessages', { rideId: rideID });
 
     socket.on('older messages', (fetchedMessages: Message[]) => {
       setMessages(fetchedMessages);
@@ -70,7 +77,11 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
 
     socket.on('chat error', (message: string) => {
       setLoading(false);
-      console.error(message);
+      setError(message);
+    });
+    socket.on('connect_error', () => {
+      setLoading(false);
+      setError('Unable to connect to chat. Please sign in again or retry.');
     });
 
     return () => {
@@ -106,6 +117,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
       <h2 className="font-display text-xl font-bold px-6 pt-5 pb-3 text-center text-ink border-b border-white/60">
         Ride Chat
       </h2>
+      {error && <p role="alert" className="px-4 py-2 text-danger">{error}</p>}
 
       {/* Members Dropdown */}
       <div className="px-4 text-sm pb-2 border-b border-white/60 relative">
@@ -128,7 +140,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
                   key={m.user_id ?? m.id}
                   className="text-sm text-primary-dark px-2 py-1.5 hover:bg-primary/10 rounded-md"
                 >
-                  {m.name.split('@')[0]}
+                  {(m.name ?? 'Unknown').split('@')[0]}
                 </div>
               ))
             )}
@@ -188,6 +200,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
             <div className="glass-input flex-1 rounded-full px-4 py-2">
               <input
                 type="text"
+                maxLength={2000}
                 placeholder="Type your message..."
                 className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60 text-sm"
                 value={newMessage}

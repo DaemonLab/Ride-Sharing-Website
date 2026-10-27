@@ -18,7 +18,9 @@ async function startServer() {
       if (deleted.count > 0) logger.info(`Session cleanup: removed ${deleted.count} expired session(s).`);
     }
     await cleanupExpiredSessions();
-    setInterval(cleanupExpiredSessions, 6 * 60 * 60 * 1000); // every 6 hours
+    setInterval(() => {
+      cleanupExpiredSessions().catch((error) => logger.error("Session cleanup failed:", error));
+    }, 6 * 60 * 60 * 1000); // every 6 hours
 
     const server = http.createServer(app);
 

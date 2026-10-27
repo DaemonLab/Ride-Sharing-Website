@@ -5,7 +5,7 @@ export type RideType = "rickshaw" | "cab" | "other";
 export interface Ride {
   id: string;
   rideID?: number;
-  createdBy?: number;
+  createdBy?: string;
   userId: string;
   userName: string;
   pickup: string;
@@ -103,8 +103,8 @@ export type RequestStatus = "Pending" | "Accepted" | "Rejected" | "Left";
 export interface RideRequest {
   id: number;
   rideID: number;
-  createdBy: number;
-  requestBy: number;
+  createdBy: string;
+  requestBy: string;
   rideStatus: RequestStatus;
   ride: {
     source: string;
@@ -114,7 +114,7 @@ export interface RideRequest {
     seatsAvailable: number;
   };
   requester?: {
-    id: number;
+    id: string;
     name: string | null;
     email: string;
     picture?: string | null;
@@ -123,6 +123,6 @@ export interface RideRequest {
 
 export interface HandleRequestPayload {
   rideID: number;
-  requestBy: number;
+  requestBy: string;
   flag: "Accepted" | "Rejected";
 }

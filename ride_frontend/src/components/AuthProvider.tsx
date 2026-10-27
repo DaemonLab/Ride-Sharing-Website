@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { User } from "../types";
@@ -23,12 +23,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   /** Extracts token from URL if present, then calls /auth/status */
-  const checkAuthStatusHandler = async () => {
+  const checkAuthStatusHandler = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams(window.location.search);
-      const tokenFromUrl = params.get("token");
+      const fragment = new URLSearchParams(window.location.hash.slice(1));
+      const tokenFromUrl = window.location.pathname === "/auth/callback"
+        ? fragment.get("token") ?? params.get("token") : null;
       if (tokenFromUrl) {
         localStorage.setItem("bearer_token", tokenFromUrl);
         params.delete("token");
@@ -39,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { isAuthenticated: authed, user: userData } = await checkAuthStatus();
       setIsAuthenticated(authed);
       setUser(userData);
-      if (authed && location.search.includes("status=")) {
+      if (authed && window.location.search.includes("status=")) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch {
@@ -49,12 +51,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     checkAuthStatusHandler();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search]);
+  }, [location.search, checkAuthStatusHandler]);
 
   /** Redirects to Google OAuth */
   const login = async () => {
