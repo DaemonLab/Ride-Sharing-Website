@@ -5,6 +5,7 @@ import { createAuthMiddleware } from "better-auth/api";
 import { prisma } from "../config/prisma.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
+import { allowedOrigins } from "../config/origins.js";
 
 /**
  * Better Auth instance configured for Token-Based (Bearer) authentication.
@@ -34,7 +35,7 @@ export const auth = betterAuth({
     validateUserInfo: ({ user, source }) => {
       if (source.oauth?.providerId !== "google") return;
       const emailDomain = user.email?.split("@")[1]?.toLowerCase();
-      if (!emailDomain || !env.allowedDomains.includes(emailDomain)) {
+      if (!user.emailVerified || !emailDomain || !env.allowedDomains.includes(emailDomain)) {
         logger.warn(`Login blocked — domain not allowed: ${user.email}`);
         return {
           error: "email_not_allowed",
@@ -57,31 +58,20 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,     // refresh if older than 1 day
   },
 
-  trustedOrigins: [
-    env.frontendUrl,
-    "https://ride-sharing-website.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:3000",
-  ],
+  trustedOrigins: [...allowedOrigins],
 
 
   advanced: {
-    // In production (Vercel -> Render cross-domain), browsers block SameSite=Lax cookies.
-    // Setting defaultCookieAttributes to SameSite=None; Secure ensures all cookies
-    // survive cross-origin requests, while skipStateCookieCheck allows DB-backed OAuth
-    // verification if the state cookie is stripped by third-party cookie restrictions.
+    // OAuth starts with a top-level backend visit. Lax cookies are sent on
+    // Google's top-level GET callback without relying on third-party cookies.
     defaultCookieAttributes: {
-      sameSite: "none",
-      secure: true,
+      sameSite: "lax",
+      secure: new URL(env.betterAuthUrl).protocol === "https:",
     },
-    cookies: {
-      state: {
-        attributes: {
-          sameSite: "none",
-          secure: true,
-        }
-      }
-    }
+  },
+
+  onAPIError: {
+    errorURL: `${env.frontendUrl}/signin?message=Google+sign-in+failed.+Please+try+again.`,
   },
 
   hooks: {
@@ -90,7 +80,8 @@ export const auth = betterAuth({
         const newSession = ctx.context.newSession;
         if (newSession?.session?.token) {
           const redirectUrl = new URL(`${env.frontendUrl}/auth/callback`);
-          redirectUrl.searchParams.set("token", newSession.session.token);
+          // Fragments are never sent to web servers or in HTTP Referer headers.
+          redirectUrl.hash = new URLSearchParams({ token: newSession.session.token }).toString();
           throw ctx.redirect(redirectUrl.toString());
         }
       }

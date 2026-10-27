@@ -10,6 +10,7 @@ import {
 } from "../services/rideService.js";
 import { rideCreateSchema, rideSearchQuerySchema } from "../validation/rideSchemas.js";
 import { asyncHandler } from "../utils/index.js";
+import { revokeRideAccess } from "../config/socket-config.js";
 
 // GET /rides — paginated, server-side search for available rides
 export const getAvailableRidesPage = asyncHandler(async (req: Request, res: Response) => {
@@ -56,6 +57,7 @@ export const cancelRideForUser = asyncHandler(async (req: Request, res: Response
     return;
   }
   const result = await cancelRide({ rideID, ownerID: req.session.user!.id });
+  revokeRideAccess(rideID);
   res.status(200).json({ success: true, data: result });
 });
 
@@ -67,6 +69,7 @@ export const leaveRideForUser = asyncHandler(async (req: Request, res: Response)
     return;
   }
   const result = await leaveRide({ rideID, userID: req.session.user!.id });
+  revokeRideAccess(rideID, req.session.user!.id);
   res.status(200).json({ success: true, data: result });
 });
 

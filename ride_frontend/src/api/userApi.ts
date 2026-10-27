@@ -1,7 +1,7 @@
 import axiosInstance from "./axiosInstance";
 
 interface UserProfileResponse {
-  id: number;
+  id: string;
   name: string | null;
   email: string;
   picture: string | null;

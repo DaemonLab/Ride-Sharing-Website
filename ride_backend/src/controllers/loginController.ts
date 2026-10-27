@@ -3,6 +3,7 @@ import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "../lib/auth.js";
 import { logger } from "../config/logger.js";
 import { env } from "../config/env.js";
+import { disconnectUser } from "../config/socket-config.js";
 
 /**
  * GET /auth/google — initiates Google OAuth via Better Auth and redirects to Google consent screen
@@ -14,11 +15,19 @@ export const loginRedirect = async (_req: Request, res: Response): Promise<void>
       body: {
         provider: "google",
         callbackURL,
+        errorCallbackURL: `${env.frontendUrl}/signin?message=Google+sign-in+failed.+Please+try+again.`,
       },
+      returnHeaders: true,
     });
 
-    if (result?.url) {
-      res.redirect(result.url);
+    // The browser visits this backend route as a top-level navigation. Forward
+    // every OAuth cookie before redirecting so privacy browsers can store state.
+    res.setHeader("Cache-Control", "no-store");
+    const cookies = result.headers.getSetCookie();
+    if (cookies.length) res.setHeader("Set-Cookie", cookies);
+
+    if (result.response?.url) {
+      res.redirect(result.response.url);
     } else {
       res.redirect(`${env.frontendUrl}/signin?status=error&message=${encodeURIComponent("Failed to initiate Google sign-in")}`);
     }
@@ -71,9 +80,11 @@ export const getStatus = async (req: Request, res: Response): Promise<void> => {
  */
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
     await auth.api.signOut({
       headers: fromNodeHeaders(req.headers),
     });
+    if (session?.user) disconnectUser(session.user.id);
     res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (err) {
     logger.error("Logout error:", err);

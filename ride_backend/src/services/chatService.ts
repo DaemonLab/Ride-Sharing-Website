@@ -27,9 +27,9 @@ export interface FormattedChatMessage {
 export async function getRideMembers({ rideID }: { rideID: number }): Promise<RideMember[]> {
   const ride = await prisma.rides.findUnique({
     where: { rideID },
-    select: { createdBy: true },
+    select: { createdBy: true, rideStatus: true },
   });
-  if (!ride) return [];
+  if (!ride || ride.rideStatus === "Cancelled") return [];
 
   const acceptedRequests = await prisma.requests.findMany({
     where: { rideID, requestStatus: "Accepted" },
@@ -72,10 +72,11 @@ export async function getOlderMessages({ rideID }: { rideID: number }): Promise<
     include: {
       sender: { select: { name: true } },
     },
-    orderBy: [{ messageDate: "asc" }, { messageTime: "asc" }, { id: "asc" }],
+    orderBy: [{ messageDate: "desc" }, { messageTime: "desc" }, { id: "desc" }],
+    take: 200,
   });
 
-  return messages.map((m) => ({
+  return messages.reverse().map((m) => ({
     rideId: String(m.rideID),
     user_id: m.messageBy,
     name: m.sender?.name ?? m.rideOwner ?? "Unknown",

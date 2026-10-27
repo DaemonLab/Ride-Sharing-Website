@@ -35,7 +35,8 @@ export const rideCreateSchema = z
         message: "Starting point and destination cannot be the same",
       });
     }
-    const departure = new Date(`${value.date}T${value.time}:00`);
+    // Ride times are local to IIT Indore, independent of the server timezone.
+    const departure = new Date(`${value.date}T${value.time}:00+05:30`);
     if (Number.isNaN(departure.getTime()) || departure <= new Date()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

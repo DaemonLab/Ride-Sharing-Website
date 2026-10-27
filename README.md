@@ -161,7 +161,7 @@ erDiagram
 - **Language**: TypeScript
 - **Framework**: Express.js
 - **Database / ORM**: PostgreSQL + Prisma ORM
-- **Session Store**: Prisma session store (`express-session`)
+- **Authentication**: Better Auth with Prisma sessions and bearer tokens
 - **Real-Time Communication**: Socket.IO
 - **Validation**: Zod
 - **Email Service**: Nodemailer
@@ -180,7 +180,7 @@ erDiagram
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18+ recommended)
+- Node.js 24.x (required by the deployment configuration)
 - PostgreSQL database
 - Google Cloud Console OAuth 2.0 Credentials
 - Gmail App Password (for Nodemailer support emails)
@@ -207,12 +207,12 @@ PORT=3000
 NODE_ENV=development
 DATABASE_URL="postgresql://username:password@localhost:5432/rideshare?schema=public"
 DATABASE_SSL=false
-SESSION_SECRET="your-super-secure-session-secret"
+BETTER_AUTH_SECRET="replace-with-a-random-secret-at-least-32-characters-long"
+BETTER_AUTH_URL="http://localhost:3000"
 FRONTEND_URL="http://localhost:5173"
 GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
-REDIRECT_URL="http://localhost:3000/auth/google/callback"
-ALLOWED_DOMAINS="iiti.ac.in,gmail.com"
+ALLOWED_DOMAINS="iiti.ac.in"
 EMAIL_USER_SENDER="your-email@gmail.com"
 EMAIL_APP_PASSWORD="your-app-password"
 EMAIL_USER_RECEIVER="admin-support@rideshare.com"
@@ -220,9 +220,10 @@ COOKIE_SECURE=false
 COOKIE_SAME_SITE=lax
 ```
 
-Run database migrations:
+For a fresh empty database, apply the committed migrations (existing databases
+must first follow the baseline procedure in [the deployment guide](docs/DEPLOYMENT.md)):
 ```bash
-npm run prisma:migrate
+npm run db:migrate:deploy
 npm run prisma:generate
 ```
 
@@ -276,5 +277,5 @@ cd ride_frontend && npm run build
 
 1. **Zero Client Trust for Identity**: All user identities are resolved on the server from `req.session.user.id`. The frontend cannot spoof identity in request bodies.
 2. **Atomic Concurrency**: Transactions prevent race conditions during concurrent ride booking requests.
-3. **HTTP-only Cookies**: Protect session identifiers from cross-site scripting (XSS) extraction.
+3. **Authentication**: Better Auth validates sessions. Browser bearer tokens are stored in localStorage; see the security review for the associated limitations.
 4. **Input Validation**: All incoming requests pass strict Zod schemas before hitting business logic.

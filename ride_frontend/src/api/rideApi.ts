@@ -5,7 +5,7 @@ interface RawRide {
   id?: string | number;
   rideID?: number;
   userId?: string | number;
-  createdBy?: number;
+  createdBy?: string;
   userName?: string;
   name?: string;
   creatorName?: string;
@@ -106,7 +106,7 @@ export interface RideGroup {
   vehicleType: string;
   totalSeats: number | null;
   seatsAvailable: number;
-  members: Array<{ id: number; name: string | null; email: string; picture?: string | null }>;
+  members: Array<{ id: string; name: string | null; email: string; picture?: string | null }>;
 }
 
 export const fetchRideGroup = async (rideID: number): Promise<RideGroup> => {

@@ -1,21 +1,15 @@
 import { useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 export default function AuthCallback() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { checkAuthStatus } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    if (token) {
-      localStorage.setItem("bearer_token", token);
-    }
-    checkAuthStatus().then(() => {
-      navigate("/profile?status=success", { replace: true });
-    });
-  }, [searchParams, navigate, checkAuthStatus]);
+    if (loading) return;
+    navigate(isAuthenticated ? "/profile" : "/signin?message=Sign-in+failed.+Please+try+again.", { replace: true });
+  }, [loading, isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

@@ -1,6 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 
-type RideRecord = { createdBy: number; rideStatus: string } | null;
+type RideRecord = { createdBy: string; rideStatus: string } | null;
 type UpdateResult = { count: number };
 
 const transaction = {
@@ -26,14 +26,14 @@ jest.unstable_mockModule("../src/config/logger.js", () => ({ logger: { info: jes
 const { leaveRide } = await import("../src/services/rideService.js");
 
 test("leaving an accepted ride releases exactly one passenger seat", async () => {
-  transaction.rides.findUnique.mockResolvedValue({ createdBy: 1, rideStatus: "Pending" });
+  transaction.rides.findUnique.mockResolvedValue({ createdBy: "owner", rideStatus: "Pending" });
   transaction.requests.updateMany.mockResolvedValue({ count: 1 });
   transaction.rides.updateMany.mockResolvedValue({ count: 1 });
 
-  await expect(leaveRide({ rideID: 7, userID: 2 })).resolves.toEqual({ rideID: 7, requestStatus: "Left" });
+  await expect(leaveRide({ rideID: 7, userID: "passenger" })).resolves.toEqual({ rideID: 7, requestStatus: "Left" });
 
   expect(transaction.requests.updateMany).toHaveBeenCalledWith({
-    where: { rideID: 7, requestBy: 2, requestStatus: "Accepted" },
+    where: { rideID: 7, requestBy: "passenger", requestStatus: "Accepted" },
     data: { requestStatus: "Left" },
   });
   expect(transaction.rides.updateMany).toHaveBeenCalledWith({
@@ -43,9 +43,9 @@ test("leaving an accepted ride releases exactly one passenger seat", async () =>
 });
 
 test("a duplicate leave cannot release another seat", async () => {
-  transaction.rides.findUnique.mockResolvedValue({ createdBy: 1, rideStatus: "Pending" });
+  transaction.rides.findUnique.mockResolvedValue({ createdBy: "owner", rideStatus: "Pending" });
   transaction.requests.updateMany.mockResolvedValue({ count: 0 });
 
-  await expect(leaveRide({ rideID: 7, userID: 2 })).rejects.toThrow("not an accepted member");
+  await expect(leaveRide({ rideID: 7, userID: "passenger" })).rejects.toThrow("not an accepted member");
   expect(transaction.rides.updateMany).not.toHaveBeenCalled();
 });

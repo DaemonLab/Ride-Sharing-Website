@@ -17,7 +17,7 @@ export async function completeExpiredRides() {
     WHERE (
       "date"::date
       + (SPLIT_PART("time", ':', 1) || ':' || SPLIT_PART("time", ':', 2) || ':00')::interval
-    ) <= NOW()
+    ) AT TIME ZONE 'Asia/Kolkata' <= NOW()
       AND "rideStatus" NOT IN ('Completed', 'Cancelled')
   `;
 }
@@ -70,10 +70,11 @@ export async function cancelRide({ rideID, ownerID }: { rideID: number; ownerID:
     if (ride.createdBy !== ownerID) throw createError("Only the ride owner can cancel this ride", 403);
     if (ride.rideStatus !== "Pending") throw createError("Only pending rides can be cancelled");
 
-    await tx.rides.update({
-      where: { rideID },
+    const cancelled = await tx.rides.updateMany({
+      where: { rideID, rideStatus: "Pending" },
       data: { rideStatus: "Cancelled" },
     });
+    if (cancelled.count !== 1) throw createError("Only pending rides can be cancelled", 409);
 
     await tx.requests.updateMany({
       where: { rideID, requestStatus: { in: ["Pending", "Accepted"] } },

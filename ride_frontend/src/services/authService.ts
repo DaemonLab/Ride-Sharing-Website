@@ -1,7 +1,6 @@
 import axios from "axios";
 import { getAuthStatus, logoutRequest } from "../api/authApi";
 import { AuthStatusResponse } from "../types";
-import { authClient } from "../lib/auth-client";
 
 /**
  * Service Layer — Auth
@@ -40,17 +39,11 @@ export const logoutUser = async (): Promise<void> => {
 };
 
 /**
- * Initiates Google OAuth via Better Auth client.
- *
- * Uses authClient.signIn.social() which POSTs directly to Better Auth's
- * /api/auth/sign-in/social endpoint. Better Auth's toNodeHandler sets the
- * OAuth state cookie properly in the browser response before redirecting to
- * Google — avoiding the state_mismatch error that occurs when the state is
- * generated server-side inside an Express handler.
+ * Start OAuth on the backend as a top-level navigation. Its response forwards
+ * Better Auth's state cookies in a first-party context, including in browsers
+ * that block third-party cookies. API requests after login use the bearer token.
  */
 export const redirectToGoogleLogin = async (): Promise<void> => {
-  await authClient.signIn.social({
-    provider: "google",
-    callbackURL: `${window.location.origin}/auth/callback`,
-  });
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+  window.location.assign(`${backendUrl.replace(/\/+$/, "")}/auth/google`);
 };

@@ -202,7 +202,7 @@ function RideRow({ ride, completed, user, onCancel, onLeave }: RideRowProps) {
       className="bg-white rounded-xl p-5 border border-[#e7e9f2] hover:border-[#3b6ef0]/40 transition-all duration-200 shadow-sm"
     >
       <div className="flex justify-between items-start gap-4 flex-wrap">
-        <div className="space-y-2 flex-1 min-w-[240px]">
+        <div className="space-y-2 flex-1 min-w-0 break-words">
           <div className="flex items-center gap-2.5 flex-wrap">
             <div className="flex items-center gap-2 bg-[#f0f1f7] border border-[#e7e9f2] rounded-lg px-3 py-1 text-[#12172b] font-semibold text-sm">
               <MapPin className="w-4 h-4 text-[#3b6ef0] shrink-0" />
@@ -403,7 +403,7 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
       )}
 
       {/* Main 2-Column Content */}
-      <main className="max-w-[1080px] mx-auto px-4 pb-20 grid grid-cols-1 gap-5 items-start sm:px-6 md:grid-cols-[296px_1fr]">
+      <main className="max-w-[1080px] mx-auto px-4 pb-20 grid grid-cols-1 gap-5 items-start sm:px-6 lg:grid-cols-[296px_minmax(0,1fr)]">
         {/* LEFT: Profile Summary Card */}
         <aside className="bg-white rounded-2xl border border-[#e7e9f2] shadow-sm overflow-hidden md:sticky md:top-24">
           <div className="h-[72px] bg-gradient-to-r from-[#2f5df0] via-[#6a5cf0] to-[#0fb99e]" />
@@ -506,11 +506,11 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
         <section className="space-y-5">
           <div className="bg-white rounded-2xl border border-[#e7e9f2] shadow-sm overflow-hidden">
             {/* Tab Header Bar */}
-            <div className="flex border-b border-[#e7e9f2] px-2">
+            <div className="grid grid-cols-3 border-b border-[#e7e9f2] px-1 sm:px-2">
               <button
                 type="button"
                 onClick={() => setActiveTab("rides")}
-                className={`py-3.5 px-4 font-semibold text-sm relative transition-colors ${
+                className={`min-w-0 py-3.5 px-1 sm:px-4 font-semibold text-xs sm:text-sm relative transition-colors ${
                   activeTab === "rides" ? "text-[#12172b]" : "text-[#8c93a8] hover:text-[#12172b]"
                 }`}
               >
@@ -529,7 +529,7 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
               <button
                 type="button"
                 onClick={() => setActiveTab("history")}
-                className={`py-3.5 px-4 font-semibold text-sm relative transition-colors ${
+                className={`min-w-0 py-3.5 px-1 sm:px-4 font-semibold text-xs sm:text-sm relative transition-colors ${
                   activeTab === "history" ? "text-[#12172b]" : "text-[#8c93a8] hover:text-[#12172b]"
                 }`}
               >
@@ -550,7 +550,7 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
               <button
                 type="button"
                 onClick={() => setActiveTab("requests")}
-                className={`py-3.5 px-4 font-semibold text-sm relative transition-colors ${
+                className={`min-w-0 py-3.5 px-1 sm:px-4 font-semibold text-xs sm:text-sm relative transition-colors ${
                   activeTab === "requests" ? "text-[#12172b]" : "text-[#8c93a8] hover:text-[#12172b]"
                 }`}
               >
