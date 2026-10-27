@@ -64,22 +64,24 @@ export const auth = betterAuth({
     "http://localhost:3000",
   ],
 
+
   advanced: {
-    // In production (Vercel → Render), frontend and backend are on different domains.
-    // OAuth state cookies must be SameSite=None; Secure so the browser sends them
-    // on the cross-site Google → backend callback redirect.
-    // In development (localhost) we fall back to Lax which works fine same-site.
+    // In production (Vercel -> Render cross-domain), browsers block SameSite=Lax cookies.
+    // Setting defaultCookieAttributes to SameSite=None; Secure ensures all cookies
+    // survive cross-origin requests, while skipStateCookieCheck allows DB-backed OAuth
+    // verification if the state cookie is stripped by third-party cookie restrictions.
+    defaultCookieAttributes: {
+      sameSite: "none",
+      secure: true,
+    },
     cookies: {
-      session_token: {
+      state: {
         attributes: {
-          sameSite: (env.nodeEnv === "production" ? "none" : "lax") as "none" | "lax",
-          secure: env.cookieSecure,
-        },
-      },
-    },
-    crossSubdomainCookies: {
-      enabled: false,
-    },
+          sameSite: "none",
+          secure: true,
+        }
+      }
+    }
   },
 
   hooks: {
