@@ -25,7 +25,8 @@ export default function SignIn() {
   const location = useLocation();
   // Redirect destination — set by ProtectedRoute when the user tried to access a protected page
   const from = (location.state as { from?: string })?.from ?? "/profile";
-  const { isAuthenticated, login, loading } = useAuth();
+  const { isAuthenticated, login, loading, error: authError } = useAuth();
+  const visibleError = error ?? authError;
 
   useEffect(() => {
     if (loading) return;
@@ -63,9 +64,9 @@ export default function SignIn() {
           </p>
         </div>
 
-        {error && (
+        {visibleError && (
           <div className="rounded-lg bg-danger/10 border border-danger/20 p-3 mb-6">
-            <p className="text-sm text-danger text-center">{error}</p>
+            <p className="text-sm text-danger text-center">{visibleError}</p>
           </div>
         )}
 
