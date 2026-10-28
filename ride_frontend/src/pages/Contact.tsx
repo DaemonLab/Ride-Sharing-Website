@@ -76,7 +76,7 @@ export default function Contact() {
                   </span>
                   <div>
                     <h3 className="font-medium text-ink">Email</h3>
-                    <a href="mailto:ershavait@gmail.com" className="text-sm text-primary-dark underline underline-offset-4 break-all">ershavait@gmail.com</a>
+                    <a href="mailto:support@rideshare.com" className="text-sm text-primary-dark underline underline-offset-4 break-all">support@rideshare.com</a>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -94,7 +94,7 @@ export default function Contact() {
                   </span>
                   <div>
                     <h3 className="font-medium text-ink">Address</h3>
-                    <p className="text-sm text-ink-variant">IIT Indore, 452020</p>
+                    <p className="text-sm text-ink-variant">Indian Institute of Technology Indore<br />Khandwa Road, Simrol<br />Indore, Madhya Pradesh 453552, India</p>
                   </div>
                 </div>
               </div>
@@ -110,7 +110,7 @@ export default function Contact() {
             {/* Contact Form */}
             <div className="glass-strong rounded-md p-5 sm:p-8 min-w-0">
               <h2 className="font-display text-xl font-semibold mb-2 text-ink">Send a message</h2>
-              <p className="text-sm text-ink-variant mb-6">Your message will be emailed to ershavait@gmail.com.</p>
+              <p className="text-sm text-ink-variant mb-6">Send your questions or feedback to the RideShare team.</p>
               <form onSubmit={handleSubmit} className="space-y-5" aria-busy={submitting}>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-ink mb-1.5">

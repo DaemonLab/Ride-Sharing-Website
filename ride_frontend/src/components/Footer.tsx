@@ -73,11 +73,11 @@ export default function Footer() {
             <ul className="space-y-1.5 text-sm text-ink-variant">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-primary" />
-                ershavait@gmail.com
+                support@rideshare.com
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-primary" />
-                IIT Indore, 452020
+                IIT Indore, Khandwa Road, Simrol, Indore 453552, India
               </li>
             </ul>
           </div>

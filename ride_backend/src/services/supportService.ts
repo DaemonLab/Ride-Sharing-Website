@@ -28,7 +28,7 @@ function createAutoReplyEmail(name: string): { subject: string; html: string } {
           <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
             <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">The RideShare Team</p>
-            <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">IIT INDORE, 452020</p>
+            <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">IIT Indore, Khandwa Road, Simrol, Indore 453552, India</p>
           </div>
         </div>
       </div>
