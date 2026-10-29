@@ -46,17 +46,11 @@ export const googleCallback = (req: Request, res: Response) => {
 };
 
 /**
- * GET /auth/status — returns current auth status using token-based session
+ * GET /auth/status — returns current auth status using the bearer token.
  */
 export const getStatus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-      returnHeaders: true,
-    });
-    const cookies = result.headers.getSetCookie();
-    if (cookies.length) res.setHeader("Set-Cookie", cookies);
-    const session = result.response;
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
 
     if (!session?.user) {
       res.status(401).json({ isAuthenticated: false, user: null });
@@ -85,12 +79,7 @@ export const getStatus = async (req: Request, res: Response): Promise<void> => {
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-    const result = await auth.api.signOut({
-      headers: fromNodeHeaders(req.headers),
-      returnHeaders: true,
-    });
-    const cookies = result.headers.getSetCookie();
-    if (cookies.length) res.setHeader("Set-Cookie", cookies);
+    await auth.api.signOut({ headers: fromNodeHeaders(req.headers) });
     if (session?.user) disconnectUser(session.user.id);
     res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (err) {

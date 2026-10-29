@@ -9,11 +9,17 @@ import { sharedState } from "./config/redis.js";
 export function registerChatHandlers() {
   const io = getIO();
 
-  // Socket middleware: validate the handshake's HttpOnly session cookie.
+  // Socket middleware: validate the browser's Better Auth bearer token.
   io.use(async (socket, next) => {
     try {
+      const token = socket.handshake.auth?.token
+        || (socket.handshake.headers.authorization as string | undefined)?.replace(/^Bearer\s+/i, "");
+      if (typeof token !== "string" || !token || token.length > 4096) {
+        return next(new Error("Authentication error: No token provided"));
+      }
+      const headers = { authorization: `Bearer ${token}` };
       const session = await auth.api.getSession({
-        headers: fromNodeHeaders(socket.handshake.headers),
+        headers: fromNodeHeaders(headers),
       });
 
       if (!session?.user) {
@@ -28,6 +34,7 @@ export function registerChatHandlers() {
       };
       socket.data.userID = session.user.id;
       socket.data.expiresAt = new Date(session.session.expiresAt).getTime();
+      socket.data.authHeaders = headers;
 
       next();
     } catch (err) {
@@ -67,7 +74,7 @@ export function registerChatHandlers() {
           );
           if (Number(count) > 60) { socket.disconnect(true); return; }
         }
-        const session = await auth.api.getSession({ headers: fromNodeHeaders(socket.handshake.headers) });
+        const session = await auth.api.getSession({ headers: fromNodeHeaders(socket.data.authHeaders) });
         if (!session?.user || session.user.id !== sessionUser.id) { socket.disconnect(true); return; }
       } catch { socket.disconnect(true); return; }
       next();

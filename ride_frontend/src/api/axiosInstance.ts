@@ -1,10 +1,10 @@
 import axios from "axios";
 
-const backendUrl = "/backend";
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
 /**
- * Same-origin HTTP client. The browser sends HttpOnly session cookies;
- * mutation requests include a CSRF header. JavaScript never reads the session.
+ * Cross-origin HTTP client. Authentication is sent as a Better Auth bearer
+ * token because the frontend (Vercel) and API (Render) use different origins.
  */
 const axiosInstance = axios.create({
   baseURL: backendUrl,
@@ -15,7 +15,16 @@ const axiosInstance = axios.create({
   },
 });
 
-// Handle session expiry without exposing cookie contents to JavaScript.
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("bearer_token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Clear the bearer token when the backend reports that it is no longer valid.
 axiosInstance.interceptors.response.use(
   (response) => {
     return response;
@@ -26,6 +35,7 @@ axiosInstance.interceptors.response.use(
 
     // /auth/status returning 401 is normal when logged out
     if (status === 401 && !url.includes("/auth/status")) {
+      localStorage.removeItem("bearer_token");
       window.location.href = "/signin?message=Session+expired,+please+sign+in+again";
     }
 

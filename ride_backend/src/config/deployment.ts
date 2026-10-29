@@ -19,7 +19,6 @@ export function validateDeploymentConfig(input: Record<string, string | undefine
   }
   const frontendUrl = origin("FRONTEND_URL", input.FRONTEND_URL);
   const betterAuthUrl = origin("BETTER_AUTH_URL", input.BETTER_AUTH_URL || (production ? undefined : `http://localhost:${port}`));
-  if (production && betterAuthUrl !== frontendUrl) throw new Error("Cookie sessions require BETTER_AUTH_URL and FRONTEND_URL to share one HTTPS origin");
   if (input.MULTI_INSTANCE === "true" && !input.REDIS_URL) throw new Error("REDIS_URL is required when MULTI_INSTANCE=true");
   if (input.REDIS_URL) {
     let redis: URL;

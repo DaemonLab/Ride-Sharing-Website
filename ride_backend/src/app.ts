@@ -37,7 +37,7 @@ app.use(
       return callback(Object.assign(new Error("Origin not allowed by CORS"), { statusCode: 403 }));
     },
     credentials: true,
-    allowedHeaders: ["Content-Type", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
 app.use((req, res, next) => {

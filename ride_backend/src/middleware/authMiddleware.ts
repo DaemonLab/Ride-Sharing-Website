@@ -25,7 +25,7 @@ declare global {
 }
 
 /**
- * Validates the cookie session and attaches the server-resolved identity.
+ * Validates the bearer token and attaches the server-resolved identity.
  */
 export const authenticate = async (
   req: Request,
@@ -33,16 +33,10 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const result = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-      returnHeaders: true,
-    });
-    const cookies = result.headers.getSetCookie();
-    if (cookies.length) res.setHeader("Set-Cookie", cookies);
-    const session = result.response;
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
 
     if (!session?.user) {
-      res.status(401).json({ message: "Unauthorized: Missing or invalid session" });
+      res.status(401).json({ message: "Unauthorized: Missing or invalid token" });
       return;
     }
 

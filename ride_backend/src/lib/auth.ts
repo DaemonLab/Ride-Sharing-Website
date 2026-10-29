@@ -1,5 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
+import { bearer } from "better-auth/plugins";
+import { createAuthMiddleware } from "better-auth/api";
 import { prisma } from "../config/prisma.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
@@ -12,6 +14,8 @@ import { allowedOrigins } from "../config/origins.js";
 export const auth = betterAuth({
   baseURL: env.betterAuthUrl,
   secret: env.betterAuthSecret,
+
+  plugins: [bearer()],
 
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -61,12 +65,25 @@ export const auth = betterAuth({
     defaultCookieAttributes: {
       sameSite: "lax",
       secure: new URL(env.betterAuthUrl).protocol === "https:",
-      httpOnly: true,
     },
   },
 
   onAPIError: {
     errorURL: `${env.frontendUrl}/signin?message=Google+sign-in+failed.+Please+try+again.`,
+  },
+
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path.startsWith("/callback")) {
+        const token = ctx.context.newSession?.session?.token;
+        if (token) {
+          const redirectUrl = new URL(`${env.frontendUrl}/auth/callback`);
+          // URL fragments are not sent to web servers or in Referer headers.
+          redirectUrl.hash = new URLSearchParams({ token }).toString();
+          throw ctx.redirect(redirectUrl.toString());
+        }
+      }
+    }),
   },
 
 });

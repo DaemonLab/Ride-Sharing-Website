@@ -9,7 +9,7 @@ import {
 } from "../services/authService";
 
 /**
- * UI Layer — AuthProvider (HttpOnly cookie sessions)
+ * UI Layer — AuthProvider (cross-origin bearer-token authentication)
  *
  * Owns the global auth state (user, isAuthenticated, loading, error).
  * Populates AuthContext so any component using useAuth() can read the state.
@@ -21,17 +21,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   const location = useLocation();
-  const isAuthCallback = location.pathname === '/auth/callback';
-
-  /** Remove legacy token material, then validate the cookie session. */
+  /** Stores the OAuth callback token, then validates it with the API. */
   const checkAuthStatusHandler = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams(window.location.search);
-      // Remove legacy browser tokens during the cookie-session migration.
-      try { localStorage.removeItem("bearer_token"); } catch { /* Storage may be disabled; cookie auth still works. */ }
-      if (window.location.pathname === "/auth/callback") {
+      const fragment = new URLSearchParams(window.location.hash.slice(1));
+      const token = window.location.pathname === "/auth/callback"
+        ? fragment.get("token") ?? params.get("token") : null;
+      if (token) {
+        localStorage.setItem("bearer_token", token);
         params.delete("token");
         const remaining = params.toString() ? `?${params.toString()}` : "";
         window.history.replaceState({}, document.title, window.location.pathname + remaining);
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch {
-      setError("Unable to check your sign-in status. Please try again.");
+      setError("Auth check failed");
       setIsAuthenticated(false);
       setUser(null);
     } finally {
@@ -54,21 +54,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     checkAuthStatusHandler();
-  }, [isAuthCallback, checkAuthStatusHandler]);
+  }, [location.search, checkAuthStatusHandler]);
 
   /** Redirects to Google OAuth */
   const login = async () => {
     await redirectToGoogleLogin();
   };
 
-  /** Destroys the token session and clears local auth state */
+  /** Destroys the token session and clears local auth state. */
   const logout = async () => {
     try {
       await logoutUser();
+    } catch {
+      setError("Logout failed");
+    } finally {
+      localStorage.removeItem("bearer_token");
       setIsAuthenticated(false);
       setUser(null);
-    } catch {
-      setError("Unable to sign out. Please try again.");
     }
   };
 

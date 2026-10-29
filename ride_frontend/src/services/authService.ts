@@ -4,33 +4,38 @@ import { AuthStatusResponse } from "../types";
 
 /**
  * Service Layer — Auth
- * Business logic for same-origin cookie sessions.
+ * Business logic for cross-origin bearer-token authentication.
  */
 
 /**
- * Checks the session through a credentialed same-origin request.
+ * Checks the current bearer-token session.
  */
 export const checkAuthStatus = async (): Promise<AuthStatusResponse> => {
   try {
+    if (!localStorage.getItem("bearer_token")) return { isAuthenticated: false, user: null };
     return await getAuthStatus();
   } catch (err: unknown) {
-    if (axios.isAxiosError(err) && err.response?.status === 401) return { isAuthenticated: false, user: null };
-    throw err;
+    if (axios.isAxiosError<AuthStatusResponse>(err) && err.response?.data) return err.response.data;
+    return { isAuthenticated: false, user: null };
   }
 };
 
 /**
- * Revokes the server session; the response expires its HttpOnly cookie.
+ * Revokes the server session and removes the browser bearer token.
  */
 export const logoutUser = async (): Promise<void> => {
-  await logoutRequest();
+  try {
+    await logoutRequest();
+  } finally {
+    localStorage.removeItem("bearer_token");
+  }
 };
 
 /**
- * Start OAuth on the backend as a top-level navigation. Its response forwards
- * Better Auth's state cookies in a first-party context, including in browsers
- * that block third-party cookies. API requests after login use cookies.
+ * Start OAuth directly on the public Render backend. The callback returns a
+ * bearer token in the URL fragment, which the callback page stores locally.
  */
 export const redirectToGoogleLogin = async (): Promise<void> => {
-  window.location.assign("/backend/auth/google");
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+  window.location.assign(`${backendUrl.replace(/\/+$/, "")}/auth/google`);
 };

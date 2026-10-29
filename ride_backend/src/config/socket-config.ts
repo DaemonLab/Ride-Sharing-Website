@@ -21,7 +21,7 @@ export function initSocket(server: HttpServer) {
       origin: [...allowedOrigins],
       methods: ["GET", "POST"],
       credentials: true,
-      allowedHeaders: ["Content-Type"],
+      allowedHeaders: ["Authorization", "Content-Type", "X-Requested-With"],
     },
     maxHttpBufferSize: 16 * 1024,
     allowRequest: (req, callback) => {
