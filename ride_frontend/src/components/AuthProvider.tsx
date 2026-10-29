@@ -21,6 +21,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   const location = useLocation();
+  const isAuthCallback = location.pathname === '/auth/callback';
 
   /** Remove legacy token material, then validate the cookie session. */
   const checkAuthStatusHandler = useCallback(async () => {
@@ -43,7 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch {
-      setError("Auth check failed");
+      setError("Unable to check your sign-in status. Please try again.");
       setIsAuthenticated(false);
       setUser(null);
     } finally {
@@ -53,7 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     checkAuthStatusHandler();
-  }, [location.search, checkAuthStatusHandler]);
+  }, [isAuthCallback, checkAuthStatusHandler]);
 
   /** Redirects to Google OAuth */
   const login = async () => {

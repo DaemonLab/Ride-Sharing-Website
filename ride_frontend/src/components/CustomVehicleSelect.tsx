@@ -64,9 +64,16 @@ export default function CustomVehicleSelect({
   };
 
   return (
-    <div ref={containerRef} className={`relative select-none ${className}`}>
+    <div ref={containerRef} className={`relative select-none ${className}`} onKeyDown={(e) => { if (e.key === 'Escape') setIsOpen(false); }}>
       {/* Trigger Button */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={placeholder}
+        aria-expanded={isOpen}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen(open => !open); }
+        }}
         onClick={() => setIsOpen((prev) => !prev)}
         className={`group relative flex items-center justify-between rounded-xl px-3.5 py-2.5 transition-all duration-200 cursor-pointer select-none ${
           value

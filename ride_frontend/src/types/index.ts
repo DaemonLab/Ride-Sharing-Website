@@ -90,6 +90,7 @@ export interface User {
 // ─── User Profile Types ──────────────────────────────────────────────────────
 
 export interface UserProfile {
+  createdAt?: string;
   studentId: string;
   name: string;
   email: string;

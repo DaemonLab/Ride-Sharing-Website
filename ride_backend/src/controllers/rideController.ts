@@ -10,6 +10,7 @@ import {
 } from "../services/rideService.js";
 import { rideCreateSchema, rideSearchQuerySchema } from "../validation/rideSchemas.js";
 import { asyncHandler } from "../utils/index.js";
+import { rideIdSchema } from "../validation/idSchemas.js";
 import { revokeRideAccess } from "../config/socket-config.js";
 
 // GET /rides — paginated, server-side search for available rides
@@ -51,11 +52,7 @@ export const getAllCompletedRides = asyncHandler(async (req: Request, res: Respo
 
 // POST /rides/:rideID/cancel — ride owner cancels their ride
 export const cancelRideForUser = asyncHandler(async (req: Request, res: Response) => {
-  const rideID = Number(req.params.rideID);
-  if (!Number.isInteger(rideID) || rideID <= 0) {
-    res.status(400).json({ success: false, message: "Invalid ride ID" });
-    return;
-  }
+  const rideID = rideIdSchema.parse(req.params.rideID);
   const result = await cancelRide({ rideID, ownerID: req.session.user!.id });
   revokeRideAccess(rideID);
   res.status(200).json({ success: true, data: result });
@@ -63,11 +60,7 @@ export const cancelRideForUser = asyncHandler(async (req: Request, res: Response
 
 // POST /rides/:rideID/leave — accepted passenger leaves a ride
 export const leaveRideForUser = asyncHandler(async (req: Request, res: Response) => {
-  const rideID = Number(req.params.rideID);
-  if (!Number.isInteger(rideID) || rideID <= 0) {
-    res.status(400).json({ success: false, message: "Invalid ride ID" });
-    return;
-  }
+  const rideID = rideIdSchema.parse(req.params.rideID);
   const result = await leaveRide({ rideID, userID: req.session.user!.id });
   revokeRideAccess(rideID, req.session.user!.id);
   res.status(200).json({ success: true, data: result });
@@ -75,11 +68,7 @@ export const leaveRideForUser = asyncHandler(async (req: Request, res: Response)
 
 // GET /rides/:rideID/group — fetch group members for a ride the user belongs to
 export const getRideGroupForUser = asyncHandler(async (req: Request, res: Response) => {
-  const rideID = Number(req.params.rideID);
-  if (!Number.isInteger(rideID) || rideID <= 0) {
-    res.status(400).json({ success: false, message: "Invalid ride ID" });
-    return;
-  }
+  const rideID = rideIdSchema.parse(req.params.rideID);
   const result = await getRideGroup({ rideID, userID: req.session.user!.id });
   res.status(200).json({ success: true, data: result });
 });

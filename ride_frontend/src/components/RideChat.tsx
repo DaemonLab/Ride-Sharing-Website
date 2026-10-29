@@ -11,7 +11,7 @@ interface RideChatProps {
 interface Message {
   rideId: string;
   user_id: string;
-  name: string;
+  name: string | null;
   message: string;
   timestamp: string;
 }
@@ -30,6 +30,9 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const chatRef = useRef<HTMLDivElement>(null);
   const [showMembers, setShowMembers] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
 
   // Socket is held in a ref so it persists across renders without triggering re-renders.
   // It is created lazily the first time this component mounts — NOT at module load time —
@@ -41,6 +44,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
     setMessages([]);
     setMembers([]);
     setLoading(true);
+    setConnected(false);
     setError(null);
 
     // Use the same-origin proxy so the browser sends its HttpOnly cookie.
@@ -52,6 +56,8 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
     const socket = socketRef.current;
 
     socket.on('connect', () => {
+      setConnected(true);
+      setLoading(true);
       setError(null);
       socket.emit('joinRoom', { rideId: rideID });
       socket.emit('getOlderMessages', { rideId: rideID });
@@ -62,12 +68,20 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
     });
 
     socket.on('older messages', (fetchedMessages: Message[]) => {
-      setMessages(fetchedMessages);
+      // History can arrive after a new live message; preserve both without
+      // duplicating messages that were also included in the history response.
+      setMessages(current => {
+        const merged = new Map<string, Message>();
+        for (const message of [...fetchedMessages, ...current]) {
+          merged.set(JSON.stringify([message.user_id, message.timestamp, message.message]), message);
+        }
+        return [...merged.values()].sort((a, b) => a.timestamp.localeCompare(b.timestamp)).slice(-200);
+      });
       setLoading(false);
     });
 
     socket.on('chat message', (msg: Message) => {
-      setMessages(prev => [...prev, msg]);
+      setMessages(prev => [...prev, msg].slice(-200));
     });
 
     socket.on('chat error', (message: string) => {
@@ -75,8 +89,14 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
       setError(message);
     });
     socket.on('connect_error', () => {
+      setConnected(false);
       setLoading(false);
       setError('Unable to connect to chat. Please sign in again or retry.');
+    });
+    socket.on('disconnect', () => {
+      setConnected(false);
+      setLoading(false);
+      setError('Chat disconnected. Reconnect before sending a message.');
     });
 
     return () => {
@@ -93,9 +113,12 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
     });
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = newMessage.trim();
-    if (!trimmed || !socketRef.current) return;
+    const socket = socketRef.current;
+    if (!trimmed || !socket?.connected || loading || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
 
     const messageData = {
       rideId: rideID,
@@ -103,8 +126,20 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
       message: trimmed,
     };
 
-    socketRef.current.emit('chat message', messageData);
-    setNewMessage('');
+    try {
+      const result = await socket.timeout(10_000).emitWithAck('chat message', messageData) as { ok: boolean };
+      if (!result?.ok) {
+        setError('Unable to send your message. Please try again.');
+        return;
+      }
+      setNewMessage(current => current.trim() === trimmed ? '' : current);
+      setError(null);
+    } catch {
+      setError('Unable to confirm delivery. Check the chat before trying again.');
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
   };
 
   return (
@@ -113,6 +148,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
         Ride Chat
       </h2>
       {error && <p role="alert" className="px-4 py-2 text-danger">{error}</p>}
+      {!connected && !loading && <button type="button" className="px-4 py-2 text-primary-dark underline" onClick={() => socketRef.current?.connect()}>Reconnect chat</button>}
 
       {/* Members Dropdown */}
       <div className="px-4 text-sm pb-2 border-b border-white/60 relative">
@@ -177,7 +213,7 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
                       }`}
                     >
                       <div className="text-xs mb-1 font-semibold opacity-90">
-                        {isSelf ? 'You' : msg.name.split('@')[0]}
+                        {isSelf ? 'You' : (msg.name ?? 'Student').split('@')[0]}
                       </div>
                       <div className="text-sm">{msg.message}</div>
                       <div className={`text-[10px] mt-1 text-right ${isSelf ? 'text-white/70' : 'text-ink-variant/70'}`}>
@@ -196,16 +232,19 @@ export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
               <input
                 type="text"
                 maxLength={2000}
+                disabled={!connected || sending}
                 placeholder="Type your message..."
                 className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60 text-sm"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && void handleSend()}
               />
             </div>
             <button
               onClick={handleSend}
-              className="bg-gradient-to-br from-primary to-primary-dark text-white p-3 rounded-full shadow-glow hover:-translate-y-0.5 transition-transform"
+              disabled={!connected || sending || !newMessage.trim()}
+              aria-label={sending ? 'Sending message' : 'Send message'}
+              className="bg-gradient-to-br from-primary to-primary-dark text-white p-3 rounded-full shadow-glow hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
             </button>

@@ -122,9 +122,15 @@ export function registerChatHandlers() {
     });
 
     // New message
-    socket.on("chat message", async (payload: unknown) => {
+    socket.on("chat message", async (payload: unknown, acknowledge?: (result: { ok: boolean }) => void) => {
+      let saved = false;
+      let replied = false;
+      const reply = (ok: boolean) => {
+        if (!replied && typeof acknowledge === "function") { replied = true; acknowledge({ ok }); }
+      };
       const parsed = chatMessageSchema.safeParse(payload);
       if (!parsed.success) {
+        reply(false);
         socket.emit("chat error", "Invalid ride ID");
         return;
       }
@@ -135,6 +141,7 @@ export function registerChatHandlers() {
         const members = await getRideMembers({ rideID: numericRideId });
         const member = members.find((candidate) => candidate.id === sessionUser.id);
         if (!member) {
+          reply(false);
           socket.emit("chat error", "You are not allowed to send messages to this group");
           return;
         }
@@ -149,11 +156,14 @@ export function registerChatHandlers() {
           message: trimmedMessage,
           timestamp,
         });
+        saved = true;
+        reply(true);
 
         // Recheck recipients too: an old room subscription must not grant
         // access after a passenger leaves or a ride is cancelled.
         const recipients = await io.in(String(numericRideId)).fetchSockets();
-        const memberIDs = new Set(members.map((candidate) => candidate.id));
+        const currentMembers = await getRideMembers({ rideID: numericRideId });
+        const memberIDs = new Set(currentMembers.map((candidate) => candidate.id));
         for (const recipient of recipients) {
           if (!memberIDs.has(recipient.data.userID)) {
             await recipient.leave(String(numericRideId));
@@ -168,8 +178,9 @@ export function registerChatHandlers() {
           });
         }
       } catch (err) {
+        reply(false);
         logger.error(`Error saving message for ride ${numericRideId}:`, err);
-        socket.emit("chat error", "Failed to send message");
+        socket.emit("chat error", saved ? "Your message was saved. Please reconnect to refresh the chat." : "Failed to send message");
       }
     });
 

@@ -37,21 +37,18 @@ function getStudentDetails(email?: string) {
   };
 }
 
-function getJoinedDate(email?: string, createdAt?: string) {
+function getJoinedDate(createdAt?: string) {
   if (createdAt) {
     const d = new Date(createdAt);
     if (!isNaN(d.getTime())) return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
   }
-  if (email) {
-    const match = email.match(/^([a-zA-Z]+)(\d{2})/);
-    if (match) return `Aug ${2000 + parseInt(match[2], 10)}`;
-  }
-  return "Aug 2024";
+  return "Date unavailable";
 }
 
 function getInitials(name?: string) {
   if (!name) return "ST";
-  const parts = name.trim().split(" ");
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "ST";
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return name.substring(0, 2).toUpperCase();
 }
@@ -64,128 +61,9 @@ function getInitials(name?: string) {
  *  - useRides('profile') → upcoming + completed rides
  *  - ConfirmModal      → sleek confirmation for ride cancellation/leave with in-place refresh
  */
-export default function Profile() {
-  const [activeTab, setActiveTab] = useState<"rides" | "history" | "requests">("rides");
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const { user } = useAuth();
-
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    description: string;
-    confirmText: string;
-    isDanger: boolean;
-    onConfirm: () => Promise<void>;
-  }>({
-    isOpen: false,
-    title: "",
-    description: "",
-    confirmText: "Confirm",
-    isDanger: true,
-    onConfirm: async () => {},
-  });
-
-  const {
-    sentRequests,
-    receivedRequests,
-    loading: requestsLoading,
-    error: requestsError,
-    handleRequest,
-  } = useRideRequests();
-
-  const { profile, loading: profileLoading, error: profileError } = useProfile();
-
-  const {
-    upcomingRides,
-    completedRides,
-    loading: ridesLoading,
-    error: ridesError,
-    fetchProfileRides,
-  } = useRides("profile");
-
-  const isLoading = profileLoading || ridesLoading;
-  const studentDetails = getStudentDetails(profile?.email ?? user?.email);
-  const joinedDate = getJoinedDate(profile?.email ?? user?.email);
-  const initials = getInitials(profile?.name ?? user?.name);
-
-  const handleCancelRideClick = (rideID: number) => {
-    setActionError(null);
-    setActionSuccess(null);
-    setConfirmModal({
-      isOpen: true,
-      title: "Cancel Ride",
-      description: "Are you sure you want to cancel this ride? All accepted and pending requests will be canceled and your co-riders notified.",
-      confirmText: "Yes, Cancel Ride",
-      isDanger: true,
-      onConfirm: async () => {
-        try {
-          await cancelUserRide(rideID);
-          await fetchProfileRides();
-          setActionSuccess("Ride canceled successfully.");
-        } catch {
-          setActionError("Unable to cancel ride. Please try again.");
-        }
-      },
-    });
-  };
-
-  const handleLeaveRideClick = (rideID: number) => {
-    setActionError(null);
-    setActionSuccess(null);
-    setConfirmModal({
-      isOpen: true,
-      title: "Leave Ride",
-      description: "Are you sure you want to leave this ride? Your seat will be freed up for other students.",
-      confirmText: "Yes, Leave Ride",
-      isDanger: true,
-      onConfirm: async () => {
-        try {
-          await leaveUserRide(rideID);
-          await fetchProfileRides();
-          setActionSuccess("You have left the ride successfully.");
-        } catch {
-          setActionError("Unable to leave ride. Please try again.");
-        }
-      },
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center py-28 bg-[#f6f7fb]">
-        <div className="bg-white p-8 rounded-2xl border border-[#e7e9f2] flex flex-col items-center gap-4 shadow-sm">
-          <div className="w-10 h-10 border-4 border-[#3b6ef0]/20 border-t-[#3b6ef0] rounded-full animate-spin" />
-          <p className="text-[#12172b] font-medium text-sm">Loading Profile & Rides...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (profileError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-28 bg-[#f6f7fb]">
-        <div className="bg-white p-8 rounded-2xl border border-[#ba1a1a]/30 max-w-md w-full text-center shadow-sm">
-          <AlertCircle className="w-12 h-12 text-[#ba1a1a] mx-auto mb-3" />
-          <h2 className="font-display text-xl font-bold text-[#12172b] mb-2">Error Loading Profile</h2>
-          <p className="text-[#ba1a1a] text-sm mb-6">{profileError}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-[#3b6ef0] text-white px-4 py-2 rounded-lg font-semibold text-xs hover:bg-[#2951c2] transition"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
 // ---------------------------------------------------------------------------
 // Module-level sub-components
-// These MUST live outside Profile() so React's hook call order stays stable.
-// RideRow: pure display — no hooks.
-// RequestRow: has its own useState — would violate Rules of Hooks if defined inside Profile.
+// Stable component identities preserve row state across parent renders.
 // ---------------------------------------------------------------------------
 
 interface RideRowProps {
@@ -365,6 +243,123 @@ function RequestRow({ request, received, onHandle, onError }: RequestRowProps) {
     </div>
   );
 }
+
+export default function Profile() {
+  const [activeTab, setActiveTab] = useState<"rides" | "history" | "requests">("rides");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    isDanger: boolean;
+    onConfirm: () => Promise<void>;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    confirmText: "Confirm",
+    isDanger: true,
+    onConfirm: async () => {},
+  });
+
+  const {
+    sentRequests,
+    receivedRequests,
+    loading: requestsLoading,
+    error: requestsError,
+    handleRequest,
+  } = useRideRequests();
+
+  const { profile, loading: profileLoading, error: profileError } = useProfile();
+
+  const {
+    upcomingRides,
+    completedRides,
+    loading: ridesLoading,
+    error: ridesError,
+    fetchProfileRides,
+  } = useRides("profile");
+
+  const isLoading = profileLoading || ridesLoading;
+  const studentDetails = getStudentDetails(profile?.email ?? user?.email);
+  const joinedDate = getJoinedDate(profile?.createdAt);
+  const initials = getInitials(profile?.name ?? user?.name);
+
+  const handleCancelRideClick = (rideID: number) => {
+    setActionError(null);
+    setActionSuccess(null);
+    setConfirmModal({
+      isOpen: true,
+      title: "Cancel Ride",
+      description: "Are you sure you want to cancel this ride? All accepted and pending requests will be canceled and your co-riders notified.",
+      confirmText: "Yes, Cancel Ride",
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await cancelUserRide(rideID);
+          await fetchProfileRides();
+          setActionSuccess("Ride canceled successfully.");
+        } catch {
+          setActionError("Unable to cancel ride. Please try again.");
+        }
+      },
+    });
+  };
+
+  const handleLeaveRideClick = (rideID: number) => {
+    setActionError(null);
+    setActionSuccess(null);
+    setConfirmModal({
+      isOpen: true,
+      title: "Leave Ride",
+      description: "Are you sure you want to leave this ride? Your seat will be freed up for other students.",
+      confirmText: "Yes, Leave Ride",
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await leaveUserRide(rideID);
+          await fetchProfileRides();
+          setActionSuccess("You have left the ride successfully.");
+        } catch {
+          setActionError("Unable to leave ride. Please try again.");
+        }
+      },
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center py-28 bg-[#f6f7fb]">
+        <div className="bg-white p-8 rounded-2xl border border-[#e7e9f2] flex flex-col items-center gap-4 shadow-sm">
+          <div className="w-10 h-10 border-4 border-[#3b6ef0]/20 border-t-[#3b6ef0] rounded-full animate-spin" />
+          <p className="text-[#12172b] font-medium text-sm">Loading Profile & Rides...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-28 bg-[#f6f7fb]">
+        <div className="bg-white p-8 rounded-2xl border border-[#ba1a1a]/30 max-w-md w-full text-center shadow-sm">
+          <AlertCircle className="w-12 h-12 text-[#ba1a1a] mx-auto mb-3" />
+          <h2 className="font-display text-xl font-bold text-[#12172b] mb-2">Error Loading Profile</h2>
+          <p className="text-[#ba1a1a] text-sm mb-6">{profileError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-[#3b6ef0] text-white px-4 py-2 rounded-lg font-semibold text-xs hover:bg-[#2951c2] transition"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f6f7fb] text-[#12172b]">

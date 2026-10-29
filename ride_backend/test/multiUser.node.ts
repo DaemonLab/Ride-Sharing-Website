@@ -67,6 +67,18 @@ test("three-user HTTP and WebSocket isolation with real signed cookie validation
     assert.equal(group.status, i === 2 ? 403 : 200);
   }
   assert.equal((await fetch(`${base}/auth/status`, { headers: { Cookie: "better-auth.session_token=forged" } })).status, 401);
+  for (const path of ['/request/sendRequest', '/request/handleRequest', '/chat/rideMembers']) {
+    for (const body of [undefined, { rideID: true }, { rideID: 2_147_483_648 }]) {
+      const response = await fetch(`${base}${path}`, {
+        method: 'POST', headers: { Cookie: cookies[0], Origin: 'http://localhost:5173',
+          'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      assert.equal(response.status, 400);
+      assert.equal((await response.json()).message, 'Please check the information you entered and try again.');
+    }
+  }
+  assert.equal((await fetch(`${base}/rides/2147483648/group`, { headers: { Cookie: cookies[0] } })).status, 400);
 
   for (const cookie of cookies) {
     const socket = connect(base, { transports: ["websocket"], extraHeaders: { Cookie: cookie, Origin: "http://localhost:5173" }, autoConnect: false, reconnection: false });
@@ -88,10 +100,14 @@ test("three-user HTTP and WebSocket isolation with real signed cookie validation
   sockets[1].on("chat message", () => leakedMessages++);
   sockets[2].on("chat message", () => leakedMessages++);
   const delivered = once(sockets[0], "chat message");
-  sockets[0].emit("chat message", { rideId: 7, message: "Private coordination" });
+  const acknowledged = await sockets[0].timeout(3000).emitWithAck("chat message", { rideId: 7, message: "Private coordination" });
+  assert.deepEqual(acknowledged, { ok: true });
   await delivered;
   await new Promise(resolve => setTimeout(resolve, 150));
   assert.equal(leakedMessages, 0);
+  assert.deepEqual(await sockets[2].timeout(3000).emitWithAck('chat message', { rideId: 7, message: 'Denied' }), { ok: false });
+  (prisma.groupChat as any).create = async () => { throw new Error('Simulated write failure'); };
+  assert.deepEqual(await sockets[0].timeout(3000).emitWithAck('chat message', { rideId: 7, message: 'Not saved' }), { ok: false });
   const disconnected = once(sockets[0], "disconnect");
   const logout = await fetch(`${base}/auth/logout`, {
     method: "POST", headers: { Cookie: cookies[0], Origin: "http://localhost:5173", "X-Requested-With": "XMLHttpRequest" },

@@ -9,7 +9,7 @@ import Button from '../components/Button';
 function Chat() {
   const { rideID } = useParams<{ rideID: string }>();
   const { user } = useAuth();
-  const { upcomingRides, loading } = useRides('profile');
+  const { upcomingRides, loading, error, fetchProfileRides } = useRides('profile');
 
   if (!rideID || !user) {
     return (
@@ -19,6 +19,11 @@ function Chat() {
           <p className="text-ink-variant mb-8">Select an upcoming ride to open its group chat.</p>
           {loading ? (
             <p className="text-ink-variant">Loading rides...</p>
+          ) : error ? (
+            <div role="alert" className="glass-card p-6 space-y-4">
+              <p className="text-danger">Unable to load your ride chats. Please try again.</p>
+              <Button onClick={() => void fetchProfileRides()}>Try again</Button>
+            </div>
           ) : upcomingRides.length === 0 ? (
             <section className="glass-card rounded-2xl px-5 py-12 text-center sm:px-10">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">

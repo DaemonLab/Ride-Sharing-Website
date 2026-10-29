@@ -5,6 +5,7 @@ interface UserProfileResponse {
   name: string | null;
   email: string;
   picture: string | null;
+  createdAt?: string;
 }
 
 /**

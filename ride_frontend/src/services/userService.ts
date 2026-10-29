@@ -18,5 +18,6 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
     name: data.name ?? "Student",
     email: data.email,
     photoUrl: data.picture ?? undefined,
+    createdAt: data.createdAt,
   };
 };

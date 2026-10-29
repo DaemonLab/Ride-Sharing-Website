@@ -83,9 +83,18 @@ export default function CustomTimePicker({
   const minutesList = ["00", "15", "30", "45"];
 
   return (
-    <div ref={containerRef} className={`relative select-none ${className}`}>
+    <div ref={containerRef} className={`relative select-none ${className}`} onKeyDown={(e) => { if (e.key === 'Escape') setIsOpen(false); }}>
       {/* Trigger Box */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={placeholder}
+        aria-expanded={isOpen}
+        onKeyDown={(e) => {
+          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault(); setIsOpen(open => !open);
+          }
+        }}
         onClick={() => setIsOpen(!isOpen)}
         className={`glass-input flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer transition-all duration-200 group ${
           isOpen ? "border-primary/60 shadow-glow" : "hover:border-primary/40"

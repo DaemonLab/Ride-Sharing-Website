@@ -105,6 +105,7 @@ test("HTTP security boundaries reject untrusted origins, bad input, and contact 
       body: JSON.stringify({ name: { malicious: true } }),
     });
     assert.equal(response.status, 400);
+    assert.equal((await response.json()).message, "Please check the information you entered and try again.");
   }
   const limited = await fetch(`${base}/contact`, { method: "POST", headers: { "X-Requested-With": "XMLHttpRequest" } });
   assert.equal(limited.status, 429);
@@ -112,6 +113,7 @@ test("HTTP security boundaries reject untrusted origins, bad input, and contact 
     method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" }, body: "{bad json",
   });
   assert.equal(malformed.status, 400);
+  assert.equal((await malformed.json()).message, "Please check the information you entered and try again.");
   assert.equal((await fetch(`${base}/auth/logout`, { method: "POST" })).status, 403);
   assert.equal((await fetch(`${base}/auth/status`, { headers: { Authorization: "Bearer raw-session-token" } })).status, 401);
 });
