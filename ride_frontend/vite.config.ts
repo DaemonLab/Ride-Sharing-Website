@@ -5,18 +5,16 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ command, mode }) => {
   if (command === 'build') {
     const backend = loadEnv(mode, process.cwd(), 'VITE_').VITE_BACKEND_URL;
-    if (!backend) throw new Error('Set VITE_BACKEND_URL before building the frontend. It is embedded at build time.');
-    let url: URL;
-    try { url = new URL(backend); } catch { throw new Error('VITE_BACKEND_URL must be a valid HTTP(S) origin'); }
-    if (!['http:', 'https:'].includes(url.protocol) || url.pathname !== '/' || url.search || url.hash || url.username || url.password) {
-      throw new Error('VITE_BACKEND_URL must be an HTTP(S) origin without an API path, query, or credentials');
-    }
-    if ((process.env.VERCEL || process.env.CI) && (url.protocol !== 'https:' || /^(localhost|127\..*|\[::1\])$/.test(url.hostname) || url.hostname.endsWith('.localhost'))) {
-      throw new Error('VITE_BACKEND_URL must point to the public HTTPS backend for hosted builds');
-    }
+    if (backend && backend !== '/backend') throw new Error('Cookie sessions require same-origin VITE_BACKEND_URL=/backend (or omit it).');
   }
   return {
   plugins: [react()],
+  server: {
+    proxy: {
+      '/api/auth': { target: 'http://localhost:3000', changeOrigin: false },
+      '/backend': { target: 'http://localhost:3000', changeOrigin: false, ws: true, rewrite: path => path.replace(/^\/backend/, '') },
+    },
+  },
   build: {
     rollupOptions: {
       output: {

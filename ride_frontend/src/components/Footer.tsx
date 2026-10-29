@@ -77,7 +77,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-primary" />
-                IIT Indore, 452020
+                IIT Indore, Khandwa Road, Simrol, Indore 453552, India
               </li>
             </ul>
           </div>

@@ -1,6 +1,8 @@
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
 import { allowedOrigins } from "./origins.js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { sharedState, sharedStateReady } from "./redis.js";
 
 let io: Server | undefined;
 
@@ -19,14 +21,21 @@ export function initSocket(server: HttpServer) {
       origin: [...allowedOrigins],
       methods: ["GET", "POST"],
       credentials: true,
-      allowedHeaders: ["Authorization", "Content-Type"],
+      allowedHeaders: ["Content-Type"],
     },
     maxHttpBufferSize: 16 * 1024,
     allowRequest: (req, callback) => {
       const origin = req.headers.origin;
-      callback(null, !origin || allowedOrigins.has(origin));
+      callback(null, !!origin && allowedOrigins.has(origin) && sharedStateReady());
     },
   });
+  if (sharedState) {
+    io.adapter(createAdapter(sharedState.pub, sharedState.sub));
+    for (const client of Object.values(sharedState)) {
+      client.on("reconnecting", () => io?.local.disconnectSockets(true));
+      client.on("error", () => io?.local.disconnectSockets(true));
+    }
+  }
 
   return io;
 }

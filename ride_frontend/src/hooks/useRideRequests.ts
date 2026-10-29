@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getSentRequests,
   getReceivedRequests,
@@ -29,6 +29,8 @@ export function useRideRequests() {
   const [sentRequests, setSentRequests] = useState<RideRequest[]>([]);
   const [receivedRequests, setReceivedRequests] = useState<RideRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   /** Informational (non-error) status message — shown differently to the user */
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -57,9 +59,12 @@ export function useRideRequests() {
    * Returns true only when a new request was successfully created ("RequestMade").
    * For informational statuses (Pending, Accepted, Rejected, Left) sets statusMessage
    * and returns false — the caller should NOT navigate to the success page.
-   * For HTTP/network errors, sets error (from the actual backend message) and returns false.
+   * For HTTP/network errors, shows a safe message and returns false.
    */
   const sendRequest = async (rideId: string): Promise<boolean> => {
+    if (sendingRef.current) return false;
+    sendingRef.current = true;
+    setSending(true);
     setError(null);
     setStatusMessage(null);
     try {
@@ -71,16 +76,14 @@ export function useRideRequests() {
       }
 
       // Not a new request — show an informational message instead
-      setStatusMessage(STATUS_MESSAGES[status] ?? `Unexpected status: ${status}`);
+      setStatusMessage(STATUS_MESSAGES[status] ?? "Unable to confirm your request. Please refresh and try again.");
       return false;
-    } catch (err: unknown) {
-      // Extract the actual backend error message from the Axios response, falling
-      // back to the thrown error's message, then a generic fallback.
-      const axiosMessage =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      const thrownMessage = err instanceof Error ? err.message : undefined;
-      setError(axiosMessage ?? thrownMessage ?? "Failed to send request. Please try again.");
+    } catch {
+      setError("Unable to send your request. Please refresh the ride and try again.");
       return false;
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
     }
   };
 
@@ -95,10 +98,8 @@ export function useRideRequests() {
       await handleRideRequest(payload);
       await fetchRequests(); // refresh state
       return true;
-    } catch (err: unknown) {
-      const axiosMessage =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(axiosMessage ?? "Failed to handle request.");
+    } catch {
+      setError("Unable to update this request. Please refresh and try again.");
       return false;
     }
   };
@@ -111,7 +112,7 @@ export function useRideRequests() {
   return {
     sentRequests,
     receivedRequests,
-    loading,
+    loading: loading || sending,
     error,
     statusMessage,
     sendRequest,

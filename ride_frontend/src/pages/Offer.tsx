@@ -18,7 +18,7 @@ import CustomVehicleSelect from "../components/CustomVehicleSelect";
  */
 export default function Offer() {
   const navigate = useNavigate();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
   const { submitRide, loading, error: apiError } = useRides("none");
 
@@ -57,7 +57,7 @@ export default function Offer() {
     }
 
     // Departure time in the future validation
-    const departure = new Date(`${rideDetails.date}T${rideDetails.time}:00`);
+    const departure = new Date(`${rideDetails.date}T${rideDetails.time}:00+05:30`);
     if (Number.isNaN(departure.getTime()) || departure <= new Date()) {
       setValidationError("Ride departure time must be in the future.");
       return false;
@@ -83,6 +83,7 @@ export default function Offer() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!validateForm()) return;
 
     // Ensure price is undefined if vehicle is not pre-booked

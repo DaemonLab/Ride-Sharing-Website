@@ -4,27 +4,16 @@ import { logger } from "./config/logger.js";
 import { auth } from "./lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
 import { chatRoomSchema, chatMessageSchema } from "./validation/chatSchemas.js";
+import { sharedState } from "./config/redis.js";
 
 export function registerChatHandlers() {
   const io = getIO();
 
-  // Socket middleware: authenticate via Bearer token directly with Better Auth
+  // Socket middleware: validate the handshake's HttpOnly session cookie.
   io.use(async (socket, next) => {
     try {
-      const token =
-        socket.handshake.auth?.token ||
-        (socket.handshake.headers?.authorization as string | undefined)?.replace(/^Bearer\s+/i, "");
-
-      if (typeof token !== "string" || !token || token.length > 4096) {
-        return next(new Error("Authentication error: No token provided"));
-      }
-
-      const headers = {
-        authorization: `Bearer ${token}`,
-      };
-
       const session = await auth.api.getSession({
-        headers: fromNodeHeaders(headers),
+        headers: fromNodeHeaders(socket.handshake.headers),
       });
 
       if (!session?.user) {
@@ -63,13 +52,24 @@ export function registerChatHandlers() {
     expiryTimer.unref();
     let windowStart = Date.now();
     let eventCount = 0;
-    socket.use((_packet, next) => {
+    socket.use(async (_packet, next) => {
       if (Date.now() - windowStart >= 60_000) { windowStart = Date.now(); eventCount = 0; }
       if (++eventCount > 60) {
         socket.emit("chat error", "Too many chat requests. Please reconnect later.");
         socket.disconnect(true);
         return;
       }
+      try {
+        if (sharedState) {
+          const count = await sharedState.rate.eval(
+            "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('PEXPIRE',KEYS[1],60000) end; return n",
+            { keys: [`rideshare:chat:${sessionUser.id}`], arguments: [] },
+          );
+          if (Number(count) > 60) { socket.disconnect(true); return; }
+        }
+        const session = await auth.api.getSession({ headers: fromNodeHeaders(socket.handshake.headers) });
+        if (!session?.user || session.user.id !== sessionUser.id) { socket.disconnect(true); return; }
+      } catch { socket.disconnect(true); return; }
       next();
     });
 
@@ -122,9 +122,15 @@ export function registerChatHandlers() {
     });
 
     // New message
-    socket.on("chat message", async (payload: unknown) => {
+    socket.on("chat message", async (payload: unknown, acknowledge?: (result: { ok: boolean }) => void) => {
+      let saved = false;
+      let replied = false;
+      const reply = (ok: boolean) => {
+        if (!replied && typeof acknowledge === "function") { replied = true; acknowledge({ ok }); }
+      };
       const parsed = chatMessageSchema.safeParse(payload);
       if (!parsed.success) {
+        reply(false);
         socket.emit("chat error", "Invalid ride ID");
         return;
       }
@@ -135,6 +141,7 @@ export function registerChatHandlers() {
         const members = await getRideMembers({ rideID: numericRideId });
         const member = members.find((candidate) => candidate.id === sessionUser.id);
         if (!member) {
+          reply(false);
           socket.emit("chat error", "You are not allowed to send messages to this group");
           return;
         }
@@ -149,11 +156,14 @@ export function registerChatHandlers() {
           message: trimmedMessage,
           timestamp,
         });
+        saved = true;
+        reply(true);
 
         // Recheck recipients too: an old room subscription must not grant
         // access after a passenger leaves or a ride is cancelled.
         const recipients = await io.in(String(numericRideId)).fetchSockets();
-        const memberIDs = new Set(members.map((candidate) => candidate.id));
+        const currentMembers = await getRideMembers({ rideID: numericRideId });
+        const memberIDs = new Set(currentMembers.map((candidate) => candidate.id));
         for (const recipient of recipients) {
           if (!memberIDs.has(recipient.data.userID)) {
             await recipient.leave(String(numericRideId));
@@ -168,8 +178,9 @@ export function registerChatHandlers() {
           });
         }
       } catch (err) {
+        reply(false);
         logger.error(`Error saving message for ride ${numericRideId}:`, err);
-        socket.emit("chat error", "Failed to send message");
+        socket.emit("chat error", saved ? "Your message was saved. Please reconnect to refresh the chat." : "Failed to send message");
       }
     });
 

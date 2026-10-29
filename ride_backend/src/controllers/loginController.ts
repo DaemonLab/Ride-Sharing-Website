@@ -50,9 +50,13 @@ export const googleCallback = (req: Request, res: Response) => {
  */
 export const getStatus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const session = await auth.api.getSession({
+    const result = await auth.api.getSession({
       headers: fromNodeHeaders(req.headers),
+      returnHeaders: true,
     });
+    const cookies = result.headers.getSetCookie();
+    if (cookies.length) res.setHeader("Set-Cookie", cookies);
+    const session = result.response;
 
     if (!session?.user) {
       res.status(401).json({ isAuthenticated: false, user: null });
@@ -81,9 +85,12 @@ export const getStatus = async (req: Request, res: Response): Promise<void> => {
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-    await auth.api.signOut({
+    const result = await auth.api.signOut({
       headers: fromNodeHeaders(req.headers),
+      returnHeaders: true,
     });
+    const cookies = result.headers.getSetCookie();
+    if (cookies.length) res.setHeader("Set-Cookie", cookies);
     if (session?.user) disconnectUser(session.user.id);
     res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (err) {

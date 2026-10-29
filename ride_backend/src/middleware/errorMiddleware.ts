@@ -9,7 +9,7 @@ export function errorHandler(error: Error, _req: Request, res: Response, _next: 
   if (error instanceof ZodError) {
     return res.status(400).json({
       success: false,
-      message: error.issues.map((e: any) => `${e.path.join(".")}: ${e.message}`).join(", "),
+      message: "Please check the information you entered and try again.",
     });
   }
 
@@ -21,7 +21,14 @@ export function errorHandler(error: Error, _req: Request, res: Response, _next: 
 
   res.status(statusCode).json({
     success: false,
-    message: statusCode >= 500 ? "Internal server error" : error.message,
+    message: ({
+      400: "Please check the information you entered and try again.",
+      401: "Please sign in to continue.",
+      403: "You do not have permission to perform this action.",
+      404: "The requested item could not be found.",
+      409: "This item has changed. Please refresh and try again.",
+      429: "Too many requests. Please wait a few minutes and try again.",
+    } as Record<number, string>)[statusCode] ?? "Something went wrong. Please try again later.",
   });
 }
 

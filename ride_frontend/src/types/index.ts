@@ -94,6 +94,8 @@ export interface UserProfile {
   name: string;
   email: string;
   photoUrl?: string;
+  createdAt?: string;
+  joinedDate?: string;
 }
 
 // ─── Ride Request Types ──────────────────────────────────────────────────────

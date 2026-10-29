@@ -13,6 +13,6 @@ export const getUserProfile = asyncHandler(async (req: Request, res: Response) =
   }
 
   res.status(200).json({ success: true, data: {
-    id: user.id, name: user.name, email: user.email, picture: user.image,
+    id: user.id, name: user.name, email: user.email, picture: user.image, createdAt: user.createdAt,
   } });
 });

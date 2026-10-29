@@ -1,23 +1,17 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
-import { bearer } from "better-auth/plugins";
-import { createAuthMiddleware } from "better-auth/api";
 import { prisma } from "../config/prisma.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { allowedOrigins } from "../config/origins.js";
 
 /**
- * Better Auth instance configured for Token-Based (Bearer) authentication.
+ * Better Auth instance using HttpOnly cookie sessions.
  * Single source of truth: Better Auth's `User` model is the only user model.
  */
 export const auth = betterAuth({
   baseURL: env.betterAuthUrl,
   secret: env.betterAuthSecret,
-
-  plugins: [
-    bearer(),
-  ],
 
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -67,6 +61,7 @@ export const auth = betterAuth({
     defaultCookieAttributes: {
       sameSite: "lax",
       secure: new URL(env.betterAuthUrl).protocol === "https:",
+      httpOnly: true,
     },
   },
 
@@ -74,19 +69,6 @@ export const auth = betterAuth({
     errorURL: `${env.frontendUrl}/signin?message=Google+sign-in+failed.+Please+try+again.`,
   },
 
-  hooks: {
-    after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path.startsWith("/callback")) {
-        const newSession = ctx.context.newSession;
-        if (newSession?.session?.token) {
-          const redirectUrl = new URL(`${env.frontendUrl}/auth/callback`);
-          // Fragments are never sent to web servers or in HTTP Referer headers.
-          redirectUrl.hash = new URLSearchParams({ token: newSession.session.token }).toString();
-          throw ctx.redirect(redirectUrl.toString());
-        }
-      }
-    }),
-  },
 });
 
 export type Auth = typeof auth;

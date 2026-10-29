@@ -12,6 +12,7 @@ export function useRideSearch(params: RideSearchParams) {
   const [result, setResult] = useState<PaginatedRides>(emptyResult);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
   const request = useMemo(() => ({
     from: params.from,
     to: params.to,
@@ -20,6 +21,7 @@ export function useRideSearch(params: RideSearchParams) {
     page: params.page,
     pageSize: params.pageSize,
   }), [params.from, params.to, params.date, params.time, params.page, params.pageSize]);
+  const requestKey = JSON.stringify(request);
 
   useEffect(() => {
     let active = true;
@@ -28,9 +30,9 @@ export function useRideSearch(params: RideSearchParams) {
     searchRides(request)
       .then((data) => { if (active) setResult(data); })
       .catch(() => { if (active) setError("Failed to load rides. Please try again."); })
-      .finally(() => { if (active) setLoading(false); });
+      .finally(() => { if (active) { setResolvedKey(requestKey); setLoading(false); } });
     return () => { active = false; };
-  }, [request]);
+  }, [request, requestKey]);
 
-  return { ...result, loading, error };
+  return { ...result, loading: loading || resolvedKey !== requestKey, error };
 }

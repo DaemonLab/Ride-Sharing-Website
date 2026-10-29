@@ -114,7 +114,7 @@ export default function BookRide() {
                     <Users className="w-4 h-4" />
                     Passenger seats available: {rideDetails.seats}
                   </p>
-                  <p>Status: {rideDetails.isBooked === true ? 'Vehicle Pre-booked' : 'Not Booked Yet'}</p>
+                  <p>Confirm vehicle booking with the ride owner in chat.</p>
                 </div>
               </div>
               <p className="ml-auto text-lg font-display font-bold text-primary shrink-0">

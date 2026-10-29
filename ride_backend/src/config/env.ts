@@ -17,6 +17,7 @@ const deployment = validateDeploymentConfig(process.env);
 
 export const env = {
   ...deployment,
+  redisUrl: process.env.REDIS_URL || undefined,
   databaseUrl:        process.env.DATABASE_URL!,
   databaseSsl:        process.env.DATABASE_SSL !== "false",
   // Better Auth (v1.7) — token-based auth

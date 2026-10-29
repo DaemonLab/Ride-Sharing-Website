@@ -28,8 +28,7 @@ function createAutoReplyEmail(name: string): { subject: string; html: string } {
           <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
             <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">The RideShare Team</p>
-            <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">IIT INDORE, 452020</p>
-            <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">support@rideshare.com</p>
+            <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">IIT Indore, Khandwa Road, Simrol, Indore 453552, India</p>
           </div>
         </div>
       </div>
@@ -46,20 +45,26 @@ export async function sendContactEmail({ name, email, subject, message }: {
   const transporter = createTransporter();
   const autoReply = createAutoReplyEmail(name);
 
-  await Promise.all([
-    transporter.sendMail({
+  await transporter.sendMail({
       from: env.emailSender,
       to: env.emailReceiver,
+      replyTo: { name, address: email },
       subject: `New Contact Request Form: ${subject}`,
       text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\nMessage: ${message}`,
-    }),
-    transporter.sendMail({
+    });
+
+  // Once support has received the message, a failed courtesy reply must not
+  // turn this into an error and encourage duplicate submissions.
+  try {
+    await transporter.sendMail({
       from: env.emailSender,
       to: email,
       subject: autoReply.subject,
       html: autoReply.html,
-    }),
-  ]);
+    });
+  } catch {
+    logger.warn("Contact notification delivered, but the automatic reply failed");
+  }
 
   logger.info(`Contact email processed successfully for ${email}`);
 }

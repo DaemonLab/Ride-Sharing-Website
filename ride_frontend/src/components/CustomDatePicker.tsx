@@ -91,6 +91,7 @@ export default function CustomDatePicker({
   };
 
   const handleSelectDate = (dateStr: string) => {
+    if (dateStr && minDate && dateStr < minDate) return;
     onChange(dateStr);
     setIsOpen(false);
   };
@@ -98,9 +99,18 @@ export default function CustomDatePicker({
   const todayStr = formatDateString(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
   return (
-    <div ref={containerRef} className={`relative select-none ${className}`}>
+    <div ref={containerRef} className={`relative select-none ${className}`} onKeyDown={(e) => { if (e.key === 'Escape') setIsOpen(false); }}>
       {/* Trigger Box */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={placeholder}
+        aria-expanded={isOpen}
+        onKeyDown={(e) => {
+          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault(); setIsOpen(open => !open);
+          }
+        }}
         onClick={() => setIsOpen(!isOpen)}
         className={`glass-input flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer transition-all duration-200 group ${
           isOpen ? "border-primary/60 shadow-glow" : "hover:border-primary/40"
@@ -143,6 +153,7 @@ export default function CustomDatePicker({
               <button
                 type="button"
                 onClick={prevMonth}
+                aria-label="Previous month"
                 className="p-1.5 rounded-lg hover:bg-surface-container text-ink-variant hover:text-ink transition"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -150,6 +161,7 @@ export default function CustomDatePicker({
               <button
                 type="button"
                 onClick={nextMonth}
+                aria-label="Next month"
                 className="p-1.5 rounded-lg hover:bg-surface-container text-ink-variant hover:text-ink transition"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -217,6 +229,7 @@ export default function CustomDatePicker({
             <button
               type="button"
               onClick={() => handleSelectDate(todayStr)}
+              disabled={!!minDate && todayStr < minDate}
               className="text-primary hover:underline"
             >
               Today

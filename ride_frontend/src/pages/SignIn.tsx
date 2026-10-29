@@ -36,7 +36,9 @@ export default function SignIn() {
   }, [isAuthenticated, loading, navigate, from]);
 
   useEffect(() => {
-    setError(message ?? null);
+    setError(message ? (message === 'Session expired, please sign in again'
+      ? 'Your session has expired. Please sign in again.'
+      : 'Unable to sign in. Please try again.') : null);
   }, [message]);
 
   if (loading) {

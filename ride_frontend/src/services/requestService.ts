@@ -41,22 +41,12 @@ export const handleRideRequest = async (payload: HandleRequestPayload): Promise<
  * Returns all ride requests the user has sent.
  */
 export const getSentRequests = async (): Promise<RideRequest[]> => {
-  try {
-    return await getRequestsSentApi();
-  } catch (error) {
-    console.error("[requestService] Failed to fetch sent requests:", error);
-    return [];
-  }
+  return getRequestsSentApi();
 };
 
 /**
  * Returns all ride requests the user has received (as a driver).
  */
 export const getReceivedRequests = async (): Promise<RideRequest[]> => {
-  try {
-    return await getRequestsReceivedApi();
-  } catch (error) {
-    console.error("[requestService] Failed to fetch received requests:", error);
-    return [];
-  }
+  return getRequestsReceivedApi();
 };

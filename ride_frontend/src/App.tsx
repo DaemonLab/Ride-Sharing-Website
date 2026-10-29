@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ScrollToTop from "./components/ScrollToTop";
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
 import { ParallaxProvider } from "react-scroll-parallax";
@@ -38,6 +39,7 @@ function App() {
   return (
     <ParallaxProvider>
       <Router>
+        <ScrollToTop />
         {/* AuthProvider is inside Router so it can use useLocation()
             to detect the ?status=success redirect from Google OAuth */}
         <AuthProvider>

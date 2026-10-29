@@ -64,10 +64,8 @@ export function useRides(mode: "profile" | "none" = "none") {
       await postRide(rideData);
       setSubmitSuccess(true);
       return true;
-    } catch (err: unknown) {
-      // Surface the actual backend error message (e.g. Zod validation details)
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? "Failed to post ride. Please try again.");
+    } catch {
+      setError("Unable to post your ride. Check the details and try again.");
       return false;
     } finally {
       setLoading(false);
