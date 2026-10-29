@@ -1,0 +1,70 @@
+import nodemailer from "nodemailer";
+import { env } from "../config/env.js";
+import { logger } from "../config/logger.js";
+import { escapeHtml } from "../validation/supportSchemas.js";
+
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    connectionTimeout: 15_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+    auth: { user: env.emailSender, pass: env.emailPassword },
+  });
+}
+
+function createAutoReplyEmail(name: string): { subject: string; html: string } {
+  return {
+    subject: "Thank You for Contacting RideShare",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <div style="background-color: #3b82f6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <h1 style="color: white; margin: 0; text-align: center;">Ride Sharing</h1>
+        </div>
+        <div style="background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+          <p style="margin-bottom: 16px;">Dear ${escapeHtml(name)},</p>
+          <p style="margin-bottom: 16px;">Thank you for reaching out to us. We have received your message and will get back to you as soon as possible.</p>
+          <p style="margin-bottom: 16px;">Our team typically responds within 24-48 business hours.</p>
+          <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
+            <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">The RideShare Team</p>
+            <p style="margin: 4px 0 0; color: #6b7280; font-size: 14px;">IIT Indore, Khandwa Road, Simrol, Indore 453552, India</p>
+          </div>
+        </div>
+      </div>
+    `,
+  };
+}
+
+/**
+ * Sends both the notification email to support and the auto-reply to the user.
+ */
+export async function sendContactEmail({ name, email, subject, message }: {
+  name: string; email: string; subject: string; message: string;
+}) {
+  const transporter = createTransporter();
+  const autoReply = createAutoReplyEmail(name);
+
+  await transporter.sendMail({
+      from: env.emailSender,
+      to: env.emailReceiver,
+      replyTo: { name, address: email },
+      subject: `New Contact Request Form: ${subject}`,
+      text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\nMessage: ${message}`,
+    });
+
+  // Once support has received the message, a failed courtesy reply must not
+  // turn this into an error and encourage duplicate submissions.
+  try {
+    await transporter.sendMail({
+      from: env.emailSender,
+      to: email,
+      subject: autoReply.subject,
+      html: autoReply.html,
+    });
+  } catch {
+    logger.warn("Contact notification delivered, but the automatic reply failed");
+  }
+
+  logger.info(`Contact email processed successfully for ${email}`);
+}

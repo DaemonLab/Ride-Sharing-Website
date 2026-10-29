@@ -1,0 +1,130 @@
+// ─── Ride Types ─────────────────────────────────────────────────────────────
+
+export type RideType = "rickshaw" | "cab" | "other";
+
+export interface Ride {
+  id: string;
+  rideID?: number;
+  createdBy?: string;
+  userId: string;
+  userName: string;
+  pickup: string;
+  dropoff: string;
+  dateTime: string;
+  rideType: RideType;
+  seatsAvailable: number;
+  estimatedCost?: number;
+  notes?: string;
+  // Fields returned by the backend for the Find page
+  from?: string;
+  to?: string;
+  date?: string;
+  time?: string;
+  price?: number;
+  seats?: number;
+  vehicle?: string;
+  isBooked?: boolean;
+}
+
+export interface RideSearchParams {
+  from?: string;
+  to?: string;
+  date?: string;
+  time?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface RideSearchMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+export interface PaginatedRides {
+  items: Ride[];
+  meta: RideSearchMeta;
+}
+
+/** Payload for POST /rides/addRide */
+export interface NewRidePayload {
+  from: string;
+  to: string;
+  date: string;
+  time: string;
+  seats: number;
+  price?: number;
+  vehicle: string;
+  isBooked?: boolean;
+}
+
+// ─── Auth Types ──────────────────────────────────────────────────────────────
+
+export interface AuthStatusResponse {
+  isAuthenticated: boolean;
+  user: User | null;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  error: string | null;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  checkAuthStatus: () => Promise<void>;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  profilePicture?: string;
+  isAdmin?: boolean;
+}
+
+// ─── User Profile Types ──────────────────────────────────────────────────────
+
+export interface UserProfile {
+  studentId: string;
+  name: string;
+  email: string;
+  photoUrl?: string;
+  createdAt?: string;
+  joinedDate?: string;
+}
+
+// ─── Ride Request Types ──────────────────────────────────────────────────────
+
+export type RequestStatus = "Pending" | "Accepted" | "Rejected" | "Left";
+
+export interface RideRequest {
+  id: number;
+  rideID: number;
+  createdBy: string;
+  requestBy: string;
+  rideStatus: RequestStatus;
+  ride: {
+    source: string;
+    destination: string;
+    date: string;
+    time: string;
+    seatsAvailable: number;
+  };
+  requester?: {
+    id: string;
+    name: string | null;
+    email: string;
+    picture?: string | null;
+  };
+}
+
+export interface HandleRequestPayload {
+  rideID: number;
+  requestBy: string;
+  flag: "Accepted" | "Rejected";
+}

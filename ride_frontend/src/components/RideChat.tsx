@@ -1,0 +1,256 @@
+import { useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { Loader, Send, ChevronDown, Users, MessageCircle } from 'lucide-react';
+
+interface RideChatProps {
+  rideID: string;
+  userID: string;
+  UserName: string;
+}
+
+interface Message {
+  rideId: string;
+  user_id: string;
+  name: string | null;
+  message: string;
+  timestamp: string;
+}
+
+interface Member {
+  id?: string;
+  user_id?: string;
+  name: string | null;
+}
+
+export default function RideChat({ rideID, userID, UserName }: RideChatProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [showMembers, setShowMembers] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+
+  // Socket is held in a ref so it persists across renders without triggering re-renders.
+  // It is created lazily the first time this component mounts — NOT at module load time —
+  // so there is no WebSocket connection opened on pages that don't use chat.
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    if (!rideID) return;
+    setMessages([]);
+    setMembers([]);
+    setLoading(true);
+    setConnected(false);
+    setError(null);
+
+    // Use the same-origin proxy so the browser sends its HttpOnly cookie.
+    socketRef.current = io(window.location.origin, {
+      path: '/backend/socket.io',
+      transports: ['websocket'],
+      withCredentials: true,
+    });
+    const socket = socketRef.current;
+
+    socket.on('connect', () => {
+      setConnected(true);
+      setLoading(true);
+      setError(null);
+      socket.emit('joinRoom', { rideId: rideID });
+      socket.emit('getOlderMessages', { rideId: rideID });
+    });
+
+    socket.on('ride members', (memberList: Member[]) => {
+      setMembers(memberList);
+    });
+
+    socket.on('older messages', (fetchedMessages: Message[]) => {
+      // History can arrive after a new live message; preserve both without
+      // duplicating messages that were also included in the history response.
+      setMessages(current => {
+        const merged = new Map<string, Message>();
+        for (const message of [...fetchedMessages, ...current]) {
+          merged.set(JSON.stringify([message.user_id, message.timestamp, message.message]), message);
+        }
+        return [...merged.values()].sort((a, b) => a.timestamp.localeCompare(b.timestamp)).slice(-200);
+      });
+      setLoading(false);
+    });
+
+    socket.on('chat message', (msg: Message) => {
+      setMessages(prev => [...prev, msg].slice(-200));
+    });
+
+    socket.on('chat error', (message: string) => {
+      setLoading(false);
+      setError(message);
+    });
+    socket.on('connect_error', () => {
+      setConnected(false);
+      setLoading(false);
+      setError('Unable to connect to chat. Please sign in again or retry.');
+    });
+    socket.on('disconnect', () => {
+      setConnected(false);
+      setLoading(false);
+      setError('Chat disconnected. Reconnect before sending a message.');
+    });
+
+    return () => {
+      // Fully disconnect when navigating away from chat — prevents ghost connections
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [rideID]);
+
+  useEffect(() => {
+    chatRef.current?.scrollTo({
+      top: chatRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, [messages]);
+
+  const handleSend = async () => {
+    const trimmed = newMessage.trim();
+    const socket = socketRef.current;
+    if (!trimmed || !socket?.connected || loading || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
+
+    const messageData = {
+      rideId: rideID,
+      user: { id: userID, name: UserName },
+      message: trimmed,
+    };
+
+    try {
+      const result = await socket.timeout(10_000).emitWithAck('chat message', messageData) as { ok: boolean };
+      if (!result?.ok) {
+        setError('Unable to send your message. Please try again.');
+        return;
+      }
+      setNewMessage(current => current.trim() === trimmed ? '' : current);
+      setError(null);
+    } catch {
+      setError('Unable to confirm delivery. Check the chat before trying again.');
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="glass-strong rounded-md mx-auto max-w-3xl h-[78vh] flex flex-col overflow-hidden">
+      <h2 className="font-display text-xl font-bold px-6 pt-5 pb-3 text-center text-ink border-b border-white/60">
+        Ride Chat
+      </h2>
+      {error && <p role="alert" className="px-4 py-2 text-danger">{error}</p>}
+      {!connected && !loading && <button type="button" className="px-4 py-2 text-primary-dark underline" onClick={() => socketRef.current?.connect()}>Reconnect chat</button>}
+
+      {/* Members Dropdown */}
+      <div className="px-4 text-sm pb-2 border-b border-white/60 relative">
+        <button
+          onClick={() => setShowMembers(!showMembers)}
+          className="flex items-center gap-1.5 text-ink-variant font-medium hover:text-primary transition py-1.5"
+        >
+          <Users className="w-4 h-4" />
+          Members
+          <ChevronDown className={`w-4 h-4 transform transition-transform ${showMembers ? 'rotate-180' : ''}`} />
+        </button>
+
+        {showMembers && (
+          <div className="absolute z-10 mt-1 glass-strong rounded-lg shadow-glass-lg p-3 w-56 max-h-60 overflow-y-auto">
+            {members.length === 0 ? (
+              <div className="text-ink-variant/60 text-sm">No members yet</div>
+            ) : (
+              members.map((m) => (
+                <div
+                  key={m.user_id ?? m.id}
+                  className="text-sm text-primary-dark px-2 py-1.5 hover:bg-primary/10 rounded-md"
+                >
+                  {(m.name ?? 'Unknown').split('@')[0]}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Messages Area */}
+      {loading ? (
+        <div className="flex justify-center items-center flex-grow">
+          <Loader className="animate-spin text-primary w-8 h-8" />
+        </div>
+      ) : (
+        <>
+          <div
+            ref={chatRef}
+            className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
+          >
+            {messages.length === 0 ? (
+              <div className="flex h-full min-h-48 flex-col items-center justify-center px-4 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <MessageCircle className="h-6 w-6" aria-hidden="true" />
+                </div>
+                <h3 className="font-display text-lg font-semibold text-ink">Start the conversation</h3>
+                <p className="mt-1 max-w-sm text-sm leading-relaxed text-ink-variant">
+                  No messages yet. Say hello and coordinate the pickup with your ride group.
+                </p>
+              </div>
+            ) : (
+              messages.map((msg, index) => {
+                const isSelf = msg.user_id === userID;
+                return (
+                  <div key={index} className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`p-3 rounded-2xl max-w-xs sm:max-w-sm break-words ${
+                        isSelf
+                          ? 'bg-gradient-to-br from-primary to-primary-dark text-white rounded-br-md shadow-glow'
+                          : 'glass text-ink rounded-bl-md'
+                      }`}
+                    >
+                      <div className="text-xs mb-1 font-semibold opacity-90">
+                        {isSelf ? 'You' : (msg.name ?? 'Student').split('@')[0]}
+                      </div>
+                      <div className="text-sm">{msg.message}</div>
+                      <div className={`text-[10px] mt-1 text-right ${isSelf ? 'text-white/70' : 'text-ink-variant/70'}`}>
+                        {msg.timestamp ? new Date(msg.timestamp).toLocaleString() : ''}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Message Input */}
+          <div className="px-4 py-3 border-t border-white/60 flex items-center gap-2">
+            <div className="glass-input flex-1 rounded-full px-4 py-2">
+              <input
+                type="text"
+                maxLength={2000}
+                disabled={!connected || sending}
+                placeholder="Type your message..."
+                className="w-full bg-transparent focus:outline-none placeholder:text-ink-variant/60 text-sm"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && void handleSend()}
+              />
+            </div>
+            <button
+              onClick={handleSend}
+              disabled={!connected || sending || !newMessage.trim()}
+              aria-label={sending ? 'Sending message' : 'Send message'}
+              className="bg-gradient-to-br from-primary to-primary-dark text-white p-3 rounded-full shadow-glow hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ----------------------------------------------------
+// Core Application Models
+// ----------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  isAdmin       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+  rides         rides[]        @relation("UserRides")
+  sentRequests  requests[]     @relation("UserRequests")
+  groupChats    groupChat[]    @relation("UserChats")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+model rides {
+  rideID         Int        @id @default(autoincrement())
+  createdBy      String
+  source         String     @db.VarChar(255)
+  destination    String     @db.VarChar(255)
+  date           String     @db.VarChar(255)
+  time           String     @db.VarChar(255)
+  seatsAvailable Int
+  totalSeats     Int?
+  totalCost      Float?
+  vehicleType    String     @db.VarChar(255)
+  rideStatus     String     @default("Pending") @db.VarChar(50)
+
+  creator        User       @relation("UserRides", fields: [createdBy], references: [id], onDelete: Cascade)
+  requests       requests[]
+  groupChats     groupChat[]
+
+  @@index([rideStatus, date, time, rideID])
+}
+
+model requests {
+  id            Int      @id @default(autoincrement())
+  rideID        Int
+  createdBy     String
+  requestBy     String
+  rideStatus    String   @db.VarChar(50)
+  requestStatus String   @default("Pending") @db.VarChar(50)
+
+  ride          rides    @relation(fields: [rideID], references: [rideID], onDelete: Cascade)
+  requester     User     @relation("UserRequests", fields: [requestBy], references: [id], onDelete: Cascade)
+
+  @@unique([rideID, requestBy])
+}
+
+model groupChat {
+  id          Int      @id @default(autoincrement())
+  rideID      Int
+  rideOwner   String?  @db.VarChar(255)
+  messageBy   String
+  message     String   @db.Text
+  messageTime String   @db.VarChar(255)
+  messageDate String   @db.VarChar(255)
+
+  ride        rides    @relation(fields: [rideID], references: [rideID], onDelete: Cascade)
+  sender      User     @relation("UserChats", fields: [messageBy], references: [id], onDelete: Cascade)
+}
