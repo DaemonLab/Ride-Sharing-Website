@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
-  getAllPendingRides,
-  getAllFilteredRides,
+  getAvailableRidesPage,
   addNewRide,
   getAllUpcomingRides,
   getAllCompletedRides,
@@ -11,8 +10,7 @@ import {
 } from "../controllers/rideController.js";
 
 const router = Router();
-router.get("/availableRides", getAllPendingRides);
-router.post("/filteredAvailableRides", getAllFilteredRides);
+router.get("/", getAvailableRidesPage);
 router.post("/addRide", addNewRide);
 router.get("/upcomingRides", getAllUpcomingRides);
 router.get("/completedRides", getAllCompletedRides);

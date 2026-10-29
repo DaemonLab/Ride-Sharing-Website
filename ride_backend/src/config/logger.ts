@@ -1,39 +1,26 @@
 import winston from "winston";
-import { getEnvironment } from "./env.js";
 
-const fileFormat = winston.format.combine(
-  winston.format.timestamp(),
-  winston.format.json(),
-);
+const isDev = process.env.NODE_ENV !== "production";
 
-const consoleFormat = winston.format.combine(
-  winston.format.colorize(),
-  winston.format.simple(),
-);
+// In production (Render), the platform captures console output.
+// File transports are only enabled locally — Render's filesystem is ephemeral
+// and log files would be lost on every redeploy.
+const transports: winston.transport[] = [
+  new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple(),
+    ),
+  }),
+];
 
-export const logger: winston.Logger = winston.createLogger({
+if (isDev) {
+  transports.push(new winston.transports.File({ filename: "logs/error.log", level: "error" }));
+  transports.push(new winston.transports.File({ filename: "logs/combined.log" }));
+}
+
+export const logger = winston.createLogger({
   level: "info",
-  transports: [
-    new winston.transports.File({
-      filename: "logs/error.log",
-      level: "error",
-      format: fileFormat,
-    }),
-    new winston.transports.File({
-      filename: "logs/combined.log",
-      format: fileFormat,
-    }),
-  ],
-  exceptionHandlers: [
-    new winston.transports.Console({ format: consoleFormat }),
-    new winston.transports.File({
-      filename: "logs/exceptions.log",
-      format: fileFormat,
-    }),
-  ],
+  transports,
 });
 
-// In non-production environments also log to the console with colorized output.
-if (getEnvironment().nodeEnv !== "production") {
-  logger.add(new winston.transports.Console({ format: consoleFormat }));
-}

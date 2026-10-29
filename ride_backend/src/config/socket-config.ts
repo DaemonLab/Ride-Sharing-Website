@@ -1,58 +1,46 @@
-import { Server, Socket } from "socket.io";
-import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Server as HttpServer } from "node:http";
-import type { RequestHandler } from "express";
-import { getEnvironment } from "./env.js";
+import { Server } from "socket.io";
+import type { Server as HttpServer } from "http";
+import { allowedOrigins } from "./origins.js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { sharedState, sharedStateReady } from "./redis.js";
 
-/** Events the client sends to the server */
-export interface ClientToServerEvents {
-  joinRoom: (payload: { rideId: number | string }) => void;
-  getOlderMessages: (payload: { rideId: number | string }) => void;
-  "chat message": (payload: { rideId: number | string; user?: unknown; message: string }) => void;
+let io: Server | undefined;
+
+export function revokeRideAccess(rideID: number, userID?: string) {
+  if (userID) io?.in(`user:${userID}`).socketsLeave(String(rideID));
+  else io?.in(String(rideID)).socketsLeave(String(rideID));
 }
 
-/** Events the server sends to the client */
-export interface ServerToClientEvents {
-  "ride members": (members: Array<{ id: number; name: string | null }>) => void;
-  "older messages": (messages: unknown[]) => void;
-  "chat message": (payload: {
-    rideId: number | string;
-    user_id: number | string;
-    name: string | null;
-    message: string;
-    timestamp: Date | string;
-  }) => void;
-  "chat error": (message: string) => void;
+export function disconnectUser(userID: string) {
+  io?.in(`user:${userID}`).disconnectSockets(true);
 }
 
-export type TypedServer = Server<ClientToServerEvents, ServerToClientEvents>;
-export type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
-
-let io: TypedServer;
-
-export function initSocket(server: HttpServer, sessionMiddleware?: RequestHandler): TypedServer {
-  const env = getEnvironment();
-  io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
+export function initSocket(server: HttpServer) {
+  io = new Server(server, {
     cors: {
-      origin: env.frontendOrigins,
+      origin: [...allowedOrigins],
       methods: ["GET", "POST"],
       credentials: true,
+      allowedHeaders: ["Content-Type"],
+    },
+    maxHttpBufferSize: 16 * 1024,
+    allowRequest: (req, callback) => {
+      const origin = req.headers.origin;
+      callback(null, !!origin && allowedOrigins.has(origin) && sharedStateReady());
     },
   });
-
-  if (sessionMiddleware) {
-    // Wrap the Express session middleware for use in Socket.IO engine.
-    io.engine.use((req: IncomingMessage, res: ServerResponse, next: () => void) =>
-      sessionMiddleware(req as Parameters<RequestHandler>[0], res as Parameters<RequestHandler>[1], next),
-    );
+  if (sharedState) {
+    io.adapter(createAdapter(sharedState.pub, sharedState.sub));
+    for (const client of Object.values(sharedState)) {
+      client.on("reconnecting", () => io?.local.disconnectSockets(true));
+      client.on("error", () => io?.local.disconnectSockets(true));
+    }
   }
 
   return io;
 }
 
-export function getIO(): TypedServer {
-  if (!io) {
-    throw new Error("Socket.io not initialized — call initSocket(server) first.");
-  }
+export function getIO() {
+  if (!io) throw new Error("Socket.IO not initialised — call initSocket() first");
   return io;
 }

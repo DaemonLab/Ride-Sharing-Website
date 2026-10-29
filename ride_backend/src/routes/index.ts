@@ -3,7 +3,6 @@ import rideRoutes from "./rideRoutes.js";
 import chatRoutes from "./chatRoutes.js";
 import requestRoutes from "./requestRoutes.js";
 import userRoutes from "./userRoutes.js";
-import supportRoutes from "./supportRoutes.js";
 
 /**
  * Central route registry.
@@ -14,6 +13,5 @@ apiRoutes.use("/rides", rideRoutes);
 apiRoutes.use("/chat", chatRoutes);
 apiRoutes.use("/request", requestRoutes);
 apiRoutes.use("/user", userRoutes);
-apiRoutes.use(supportRoutes);
 
 export default apiRoutes;

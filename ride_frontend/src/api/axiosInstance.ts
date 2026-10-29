@@ -1,31 +1,30 @@
 import axios from "axios";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const backendUrl = "/backend";
 
 /**
- * Shared Axios instance used by all API modules.
- * - baseURL is read from the VITE_BACKEND_URL env variable
- * - withCredentials: true sends session cookies on every request
- * - Response interceptor handles global 401 → redirect to /signin
+ * Same-origin HTTP client. The browser sends HttpOnly session cookies;
+ * mutation requests include a CSRF header. JavaScript never reads the session.
  */
 const axiosInstance = axios.create({
   baseURL: backendUrl,
-  withCredentials: true, // replaces credentials: 'include' everywhere
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
+    "X-Requested-With": "XMLHttpRequest",
   },
 });
 
-// Global response interceptor — handles auth expiry uniformly
+// Handle session expiry without exposing cookie contents to JavaScript.
 axiosInstance.interceptors.response.use(
-  (response) => response, // pass through successful responses
+  (response) => {
+    return response;
+  },
   (error) => {
     const url = error.config?.url ?? "";
     const status = error.response?.status;
 
-    // /auth/status returning 401 is NORMAL — it just means "not logged in yet"
-    // Don't redirect in that case, let authService handle it gracefully.
-    // Only redirect on 401 for actual protected API calls.
+    // /auth/status returning 401 is normal when logged out
     if (status === 401 && !url.includes("/auth/status")) {
       window.location.href = "/signin?message=Session+expired,+please+sign+in+again";
     }

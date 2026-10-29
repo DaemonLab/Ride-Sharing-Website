@@ -4,12 +4,14 @@ import Button from '../components/Button';
 import { motion } from 'framer-motion';
 import { ParallaxBanner } from 'react-scroll-parallax';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+// Proper Vite asset import — gets fingerprinted + served from dist/ in production builds
+import carpoolImg from '../assets/carpool.webp';
 
 const ANIMATIONS = [
-  "./src/assets/Money stack.lottie",
-  "./src/assets/eco.lottie",
-  "./src/assets/socialize.lottie",
-  "./src/assets/safety.lottie"
+  new URL('../assets/Money stack.lottie', import.meta.url).href,
+  new URL('../assets/eco.lottie', import.meta.url).href,
+  new URL('../assets/socialize.lottie', import.meta.url).href,
+  new URL('../assets/safety.lottie', import.meta.url).href,
 ]
 
 export default function Home() {
@@ -20,7 +22,7 @@ export default function Home() {
       <ParallaxBanner
         layers={[
           {
-            image: "/src/assets/carpool.jpg",
+            image: carpoolImg,
             speed: -30,
             expanded: false,
             scale: [1.1, 1],

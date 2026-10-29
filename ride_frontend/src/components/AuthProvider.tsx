@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { User } from "../types";
@@ -9,16 +9,10 @@ import {
 } from "../services/authService";
 
 /**
- * UI Layer — AuthProvider
+ * UI Layer — AuthProvider (HttpOnly cookie sessions)
  *
  * Owns the global auth state (user, isAuthenticated, loading, error).
  * Populates AuthContext so any component using useAuth() can read the state.
- *
- * Key behaviour:
- * - Runs checkAuthStatus on mount (restores session after page refresh)
- * - Re-runs checkAuthStatus when the URL contains ?status=success
- *   (this is how we detect the Google OAuth callback redirect back to the frontend)
- * - After logout, always clears local state even if the server call fails
  */
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -27,55 +21,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   const location = useLocation();
+  const isAuthCallback = location.pathname === '/auth/callback';
 
-  /** Calls /auth/status and updates local state accordingly */
-  const checkAuthStatusHandler = async () => {
+  /** Remove legacy token material, then validate the cookie session. */
+  const checkAuthStatusHandler = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const params = new URLSearchParams(window.location.search);
+      // Remove legacy browser tokens during the cookie-session migration.
+      try { localStorage.removeItem("bearer_token"); } catch { /* Storage may be disabled; cookie auth still works. */ }
+      if (window.location.pathname === "/auth/callback") {
+        params.delete("token");
+        const remaining = params.toString() ? `?${params.toString()}` : "";
+        window.history.replaceState({}, document.title, window.location.pathname + remaining);
+      }
+
       const { isAuthenticated: authed, user: userData } = await checkAuthStatus();
       setIsAuthenticated(authed);
       setUser(userData);
+      if (authed && window.location.search.includes("status=")) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     } catch {
-      setError("Auth check failed");
+      setError("Unable to check your sign-in status. Please try again.");
       setIsAuthenticated(false);
       setUser(null);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Run on mount to restore any existing session (e.g. page refresh)
-  useEffect(() => {
-    checkAuthStatusHandler();
   }, []);
 
-  // Re-check auth whenever the URL has ?status=success or ?status=already_authenticated.
-  // This fires when Google OAuth redirects back to /profile?status=success,
-  // which is the ONLY reliable way to know the login just completed.
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const status = params.get("status");
-    if (status === "success" || status === "already_authenticated") {
-      checkAuthStatusHandler();
-    }
-  }, [location.search]);
+    checkAuthStatusHandler();
+  }, [isAuthCallback, checkAuthStatusHandler]);
 
-  /** Redirects to Google OAuth — no API call, just a browser navigation */
-  const login = () => {
-    redirectToGoogleLogin();
+  /** Redirects to Google OAuth */
+  const login = async () => {
+    await redirectToGoogleLogin();
   };
 
-  /** Destroys the server session and clears local auth state */
+  /** Destroys the token session and clears local auth state */
   const logout = async () => {
     try {
       await logoutUser();
-    } catch {
-      setError("Logout failed");
-    } finally {
-      // Always clear local state even if the server call fails
       setIsAuthenticated(false);
       setUser(null);
+    } catch {
+      setError("Unable to sign out. Please try again.");
     }
   };
 

@@ -9,9 +9,10 @@ import { RideRequest, HandleRequestPayload } from "../types";
  * We unwrap .data here so the service/hook layers get plain values.
  */
 
-/** Send a join request for a ride */
-export const sendRequestApi = async (data: { rideID: number }): Promise<void> => {
-  await axiosInstance.post("/request/sendRequest", data);
+/** Send a join request for a ride — returns the status string from the backend */
+export const sendRequestApi = async (data: { rideID: number }): Promise<string> => {
+  const response = await axiosInstance.post<{ success: boolean; data: string }>("/request/sendRequest", data);
+  return response.data.data; // "RequestMade" | "Accepted" | "Pending" | "Rejected" | "Left"
 };
 
 /** Accept or reject a received join request */

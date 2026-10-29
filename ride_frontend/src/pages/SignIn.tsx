@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 /**
@@ -22,17 +22,23 @@ export default function SignIn() {
   const message = searchParams.get("message");
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { isAuthenticated, login, loading } = useAuth();
+  const location = useLocation();
+  // Redirect destination — set by ProtectedRoute when the user tried to access a protected page
+  const from = (location.state as { from?: string })?.from ?? "/profile";
+  const { isAuthenticated, login, loading, error: authError } = useAuth();
+  const visibleError = error ?? authError;
 
   useEffect(() => {
     if (loading) return;
     if (isAuthenticated) {
-      navigate("/profile", { replace: true });
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, from]);
 
   useEffect(() => {
-    setError(message ?? null);
+    setError(message ? (message === 'Session expired, please sign in again'
+      ? 'Your session has expired. Please sign in again.'
+      : 'Unable to sign in. Please try again.') : null);
   }, [message]);
 
   if (loading) {
@@ -60,9 +66,9 @@ export default function SignIn() {
           </p>
         </div>
 
-        {error && (
+        {visibleError && (
           <div className="rounded-lg bg-danger/10 border border-danger/20 p-3 mb-6">
-            <p className="text-sm text-danger text-center">{error}</p>
+            <p className="text-sm text-danger text-center">{visibleError}</p>
           </div>
         )}
 

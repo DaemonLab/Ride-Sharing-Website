@@ -4,6 +4,8 @@ export type RideType = "rickshaw" | "cab" | "other";
 
 export interface Ride {
   id: string;
+  rideID?: number;
+  createdBy?: string;
   userId: string;
   userName: string;
   pickup: string;
@@ -24,12 +26,27 @@ export interface Ride {
   isBooked?: boolean;
 }
 
-/** Filters sent to POST /rides/filteredAvailableRides */
-export interface RideFilters {
+export interface RideSearchParams {
   from?: string;
   to?: string;
   date?: string;
   time?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface RideSearchMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+export interface PaginatedRides {
+  items: Ride[];
+  meta: RideSearchMeta;
 }
 
 /** Payload for POST /rides/addRide */
@@ -56,7 +73,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
-  login: () => void;
+  login: () => Promise<void>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
 }
@@ -88,8 +105,8 @@ export type RequestStatus = "Pending" | "Accepted" | "Rejected" | "Left";
 export interface RideRequest {
   id: number;
   rideID: number;
-  createdBy: number;
-  requestBy: number;
+  createdBy: string;
+  requestBy: string;
   rideStatus: RequestStatus;
   ride: {
     source: string;
@@ -99,7 +116,7 @@ export interface RideRequest {
     seatsAvailable: number;
   };
   requester?: {
-    id: number;
+    id: string;
     name: string | null;
     email: string;
     picture?: string | null;
@@ -108,6 +125,6 @@ export interface RideRequest {
 
 export interface HandleRequestPayload {
   rideID: number;
-  requestBy: number;
+  requestBy: string;
   flag: "Accepted" | "Rejected";
 }

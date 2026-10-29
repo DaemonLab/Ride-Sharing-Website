@@ -1,13 +1,13 @@
 import { prisma } from "../config/prisma.js";
 
 export interface RideMember {
-  id: number;
+  id: string;
   name: string | null;
 }
 
 export interface MessageInput {
   rideID: number;
-  user_id: number;
+  user_id: string;
   name: string | null;
   message: string;
   timestamp?: Date;
@@ -27,9 +27,9 @@ export interface FormattedChatMessage {
 export async function getRideMembers({ rideID }: { rideID: number }): Promise<RideMember[]> {
   const ride = await prisma.rides.findUnique({
     where: { rideID },
-    select: { createdBy: true },
+    select: { createdBy: true, rideStatus: true },
   });
-  if (!ride) return [];
+  if (!ride || ride.rideStatus === "Cancelled") return [];
 
   const acceptedRequests = await prisma.requests.findMany({
     where: { rideID, requestStatus: "Accepted" },
@@ -38,7 +38,7 @@ export async function getRideMembers({ rideID }: { rideID: number }): Promise<Ri
 
   const memberIds = [ride.createdBy, ...acceptedRequests.map((r) => r.requestBy)];
 
-  return prisma.users.findMany({
+  return prisma.user.findMany({
     where: { id: { in: memberIds } },
     select: { id: true, name: true },
   });
@@ -49,8 +49,7 @@ export async function getRideMembers({ rideID }: { rideID: number }): Promise<Ri
  */
 export async function addMessage({ rideID, user_id, name, message, timestamp }: MessageInput): Promise<void> {
   const ts = timestamp ?? new Date();
-  const messageTime = ts.toTimeString().split(" ")[0];
-  const messageDate = ts.toISOString().split("T")[0];
+  const [messageDate, messageTime] = ts.toISOString().replace("Z", "").split("T");
 
   await prisma.groupChat.create({
     data: {
@@ -73,14 +72,15 @@ export async function getOlderMessages({ rideID }: { rideID: number }): Promise<
     include: {
       sender: { select: { name: true } },
     },
-    orderBy: [{ messageDate: "asc" }, { messageTime: "asc" }, { id: "asc" }],
+    orderBy: [{ messageDate: "desc" }, { messageTime: "desc" }, { id: "desc" }],
+    take: 200,
   });
 
-  return messages.map((m) => ({
+  return messages.reverse().map((m) => ({
     rideId: String(m.rideID),
-    user_id: String(m.messageBy),
+    user_id: m.messageBy,
     name: m.sender?.name ?? m.rideOwner ?? "Unknown",
     message: m.message,
-    timestamp: `${m.messageDate} ${m.messageTime}`,
+    timestamp: `${m.messageDate}T${m.messageTime}Z`,
   }));
 }

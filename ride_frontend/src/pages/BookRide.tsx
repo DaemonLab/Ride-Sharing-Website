@@ -21,7 +21,7 @@ export default function BookRide() {
   const navigate = useNavigate();
   const location = useLocation();
   const [paymentMethod] = useState('card');
-  const { sendRequest, loading, error } = useRideRequests();
+  const { sendRequest, loading, error, statusMessage } = useRideRequests();
 
   const rideDetails = location.state?.rideDetails as RideDetails;
 
@@ -32,11 +32,8 @@ export default function BookRide() {
   }, [navigate, rideDetails]);
 
   if (!rideDetails) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-ink-variant">
-        Loading...
-      </div>
-    );
+    // useEffect above will redirect to /find — return null to avoid a flash
+    return null;
   }
 
   const handleBooking = async () => {
@@ -53,6 +50,10 @@ export default function BookRide() {
       },
     });
   };
+
+  // Derived: is the ride already full based on the state we navigated with?
+  // The backend is the source of truth, but this gives instant feedback.
+  const isFull = (rideDetails?.seats ?? 1) <= 0;
 
   return (
     <div className="min-h-screen py-28 relative">
@@ -111,9 +112,9 @@ export default function BookRide() {
                 <div className="text-sm text-ink-variant space-y-1 mt-2">
                   <p className="flex items-center gap-1.5">
                     <Users className="w-4 h-4" />
-                    Available Seats: {rideDetails.seats}
+                    Passenger seats available: {rideDetails.seats}
                   </p>
-                  <p>Status: {rideDetails.isBooked === true ? 'Vehicle Pre-booked' : 'Not Booked Yet'}</p>
+                  <p>Confirm vehicle booking with the ride owner in chat.</p>
                 </div>
               </div>
               <p className="ml-auto text-lg font-display font-bold text-primary shrink-0">
@@ -121,6 +122,21 @@ export default function BookRide() {
               </p>
             </div>
           </div>
+
+          {/* Status / Error Banner */}
+          {(error || statusMessage || isFull) && (
+            <div
+              className={`w-full text-sm px-4 py-3 rounded-lg border ${
+                error || isFull
+                  ? "bg-danger/10 border-danger/20 text-danger"
+                  : "bg-primary/10 border-primary/20 text-primary-dark"
+              }`}
+            >
+              {isFull && !error && !statusMessage
+                ? "This ride is full. No seats are available."
+                : error ?? statusMessage}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
@@ -131,8 +147,7 @@ export default function BookRide() {
             >
               Cancel
             </Button>
-            {error && <p className="text-danger text-sm text-center">{error}</p>}
-            <Button className="flex-1" onClick={handleBooking} disabled={loading}>
+            <Button className="flex-1" onClick={handleBooking} disabled={loading || !!statusMessage || isFull}>
               {loading ? 'Sending Request...' : 'Request to Join'}
             </Button>
           </div>

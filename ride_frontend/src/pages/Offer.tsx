@@ -18,7 +18,7 @@ import CustomVehicleSelect from "../components/CustomVehicleSelect";
  */
 export default function Offer() {
   const navigate = useNavigate();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
   const { submitRide, loading, error: apiError } = useRides("none");
 
@@ -57,14 +57,14 @@ export default function Offer() {
     }
 
     // Departure time in the future validation
-    const departure = new Date(`${rideDetails.date}T${rideDetails.time}:00`);
+    const departure = new Date(`${rideDetails.date}T${rideDetails.time}:00+05:30`);
     if (Number.isNaN(departure.getTime()) || departure <= new Date()) {
       setValidationError("Ride departure time must be in the future.");
       return false;
     }
 
     if (!rideDetails.seats || rideDetails.seats < 1 || rideDetails.seats > 20) {
-      setValidationError("Available seats must be between 1 and 20.");
+      setValidationError("Available passenger seats must be between 1 and 20.");
       return false;
     }
 
@@ -83,6 +83,7 @@ export default function Offer() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!validateForm()) return;
 
     // Ensure price is undefined if vehicle is not pre-booked
@@ -213,7 +214,7 @@ export default function Offer() {
               </div>
             </div>
 
-            {/* Vehicle Type & Available Seats */}
+            {/* Vehicle Type & Passenger Seats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-variant uppercase tracking-wider mb-1.5 px-1">
@@ -231,7 +232,7 @@ export default function Offer() {
 
               <div>
                 <label className="block text-xs font-semibold text-ink-variant uppercase tracking-wider mb-1.5 px-1">
-                  Available Seats
+                  Available Passenger Seats
                 </label>
                 <div className="glass-input flex items-center rounded-lg px-4 py-3 transition-colors">
                   <Users className="w-5 h-5 text-primary mr-3 shrink-0" />
@@ -253,6 +254,9 @@ export default function Offer() {
                     max={20}
                   />
                 </div>
+                <p className="mt-1.5 px-1 text-xs text-ink-variant">
+                  Seats for riders joining you; your own seat as the offerer is not included.
+                </p>
               </div>
             </div>
 

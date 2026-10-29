@@ -1,5 +1,6 @@
 import { StrictMode, Component, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { NuqsAdapter } from 'nuqs/adapters/react';
 import App from './App.tsx';
 import './index.css';
 
@@ -10,10 +11,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: '2rem', fontFamily: 'monospace', color: 'red' }}>
+        <div role="alert" style={{ padding: '2rem', fontFamily: 'sans-serif', color: '#161c27' }}>
           <h2>Something went wrong</h2>
-          <pre style={{ whiteSpace: 'pre-wrap' }}>{(this.state.error as Error).message}</pre>
-          <p style={{ color: '#555' }}>Check the browser console (F12) for full details.</p>
+          <p>Please refresh the page and try again.</p>
+          <button onClick={() => window.location.reload()}>Refresh page</button>
         </div>
       );
     }
@@ -23,8 +24,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <NuqsAdapter>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </NuqsAdapter>
   </StrictMode>
 );

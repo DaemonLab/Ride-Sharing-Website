@@ -1,90 +1,84 @@
-import express, { type Express } from "express";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
-import pool from "./config/db.js";
+import express from "express";
 import cors from "cors";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./lib/auth.js";
+import { env } from "./config/env.js";
 import apiRoutes from "./routes/index.js";
 import loginRoutes from "./routes/loginRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 import { authenticate } from "./middleware/authMiddleware.js";
-import { getEnvironment } from "./config/env.js";
-import { AppError, errorHandler, notFoundHandler } from "./middleware/errorMiddleware.js";
-import type { RequestHandler } from "express";
+import { errorHandler } from "./middleware/errorMiddleware.js";
+import { allowedOrigins } from "./config/origins.js";
+import { loginRateLimit, apiRateLimit } from "./middleware/rateLimits.js";
+import { prisma } from "./config/prisma.js";
+import { requireCsrfHeader } from "./middleware/csrf.js";
+import { sharedStateReady } from "./config/redis.js";
 
-const PgSession = connectPg(session);
+const app = express();
+app.disable("x-powered-by");
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
-function corsOptions(frontendOrigins: string[]) {
-  return {
-    origin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-      // Requests without an Origin header are server-to-server/health requests.
-      if (!origin || frontendOrigins.includes(origin)) {
-        return callback(null, true);
+if (env.cookieSecure) app.set("trust proxy", 1);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.replace(/\/+$/, "");
+      if (allowedOrigins.has(cleanOrigin)) {
+        return callback(null, origin);
       }
-      return callback(new AppError(403, "Origin is not allowed by CORS"));
+      return callback(Object.assign(new Error("Origin not allowed by CORS"), { statusCode: 403 }));
     },
     credentials: true,
-  };
-}
-
-/**
- * Build the Express application after runtime configuration has been validated.
- * Keeping app creation separate from server startup makes HTTP tests easier.
- */
-export function createApp(): Express {
-  const env = getEnvironment();
-  const app = express();
-
-  if (env.cookieSecure) {
-    // Required for secure cookies behind a reverse proxy such as Render or Railway.
-    app.set("trust proxy", 1);
+    allowedHeaders: ["Content-Type", "X-Requested-With"],
+  })
+);
+app.use((req, res, next) => {
+  if (req.path !== "/health" && !sharedStateReady()) {
+    res.status(503).json({ status: "shared state unavailable" });
+    return;
   }
+  next();
+});
 
-  app.use(cors(corsOptions(env.frontendOrigins)));
-  app.use(express.json({ limit: "100kb" }));
-  app.use(express.urlencoded({ extended: true, limit: "100kb" }));
+// Better Auth endpoint — mounts all Better Auth APIs (Express v5 uses *splat)
+app.use("/api/auth/sign-in", loginRateLimit);
+app.all("/api/auth/*splat", toNodeHandler(auth));
+app.use(requireCsrfHeader);
 
-  const sessionMiddleware: RequestHandler = session({
-    name: "rideshare.sid",
-    rolling: true,
-    cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure: env.cookieSecure,
-      httpOnly: true,
-      sameSite: env.cookieSameSite,
-    },
-    store: new PgSession({
-      pool,
-      tableName: "session",
-      ttl: 7 * 24 * 60 * 60,
-      createTableIfMissing: true,
-    }),
-    secret: env.sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-  });
-  app.use(sessionMiddleware);
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
-  // Expose the session middleware so Socket.IO can reuse it for auth.
-  app.locals.sessionMiddleware = sessionMiddleware;
+app.get("/health", (_req, res) => res.json({ status: "OK" }));
+app.get("/ready", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "OK" });
+  } catch {
+    res.status(503).json({ status: "unavailable" });
+  }
+});
 
-  app.get("/health", (_req, res) => {
-    res.status(200).json({ status: "OK" });
-  });
+// Public routes (login bridge, callback, logout, status, support)
+app.use("/auth", loginRoutes);
+app.use(supportRoutes);
 
-  app.get("/ready", async (_req, res, next) => {
-    try {
-      await pool.query("SELECT 1");
-      res.status(200).json({ status: "READY" });
-    } catch (error) {
-      next(error);
-    }
-  });
+// Protected API routes — require a valid session cookie.
+app.use(authenticate);
+app.use(apiRateLimit);
+app.use(apiRoutes);
 
-  app.use("/auth", loginRoutes);
-  app.use(authenticate);
-  app.use(apiRoutes);
+// Catch-all for unmatched routes
+app.use((_req, res) => res.status(404).json({ success: false, message: "Route not found" }));
 
-  app.use(notFoundHandler);
-  app.use(errorHandler);
+// Centralized error handler
+app.use(errorHandler);
 
-  return app;
-}
+export default app;

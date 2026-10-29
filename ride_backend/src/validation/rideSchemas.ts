@@ -1,29 +1,42 @@
 import { z } from "zod";
-import type { ZodError } from "zod";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/**
- * Schema for POST /rides/addRide
- * Accepts frontend field names (from, to, seats, price, vehicle)
- * and normalises them to backend names via the controller.
- */
+function isCalendarDate(value: string) {
+  if (!datePattern.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+}
+
+const calendarDate = z.string().refine(isCalendarDate, "Date must be a valid YYYY-MM-DD calendar date");
+
+// Schema for POST /rides/addRide
+// Validates the request body and transforms field names to backend format
 export const rideCreateSchema = z
   .object({
-    from: z.string().trim().min(1).max(255),
-    to: z.string().trim().min(1).max(255),
-    date: z.string().regex(datePattern, "Date must be YYYY-MM-DD"),
-    time: z.string().regex(timePattern, "Time must be HH:mm"),
-    seats: z.coerce.number().int().min(1).max(20),
-    price: z.preprocess(
+    from:     z.string().trim().min(1).max(255),
+    to:       z.string().trim().min(1).max(255),
+    date:     calendarDate,
+    time:     z.string().regex(timePattern, "Time must be HH:mm"),
+    seats:    z.coerce.number().int().min(1).max(20),
+    price:    z.preprocess(
       (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
       z.number().finite().min(0).max(100_000).optional(),
     ),
-    vehicle: z.enum(["rickshaw", "cab", "other"]),
+    vehicle:  z.enum(["rickshaw", "cab", "other"]),
   })
   .superRefine((value, ctx) => {
-    const departure = new Date(`${value.date}T${value.time}:00`);
+    if (value.from.toLocaleLowerCase() === value.to.toLocaleLowerCase()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["to"],
+        message: "Starting point and destination cannot be the same",
+      });
+    }
+    // Ride times are local to IIT Indore, independent of the server timezone.
+    const departure = new Date(`${value.date}T${value.time}:00+05:30`);
     if (Number.isNaN(departure.getTime()) || departure <= new Date()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -33,44 +46,16 @@ export const rideCreateSchema = z
     }
   });
 
-/** Inferred type for a validated ride-create payload */
-export type RideCreateInput = z.infer<typeof rideCreateSchema>;
-
-/**
- * Schema for POST /rides/filteredAvailableRides
- */
-export const rideFilterSchema = z.object({
-  source: z.string().trim().max(255).optional().default(""),
-  destination: z.string().trim().max(255).optional().default(""),
-  date: z
-    .string()
-    .regex(datePattern, "Date must be YYYY-MM-DD")
-    .optional()
-    .or(z.literal(""))
-    .default(""),
-  time: z
-    .string()
-    .regex(timePattern, "Time must be HH:mm")
-    .optional()
-    .or(z.literal(""))
-    .default(""),
+// Schema for GET /rides. Query-string values arrive as strings, so page values
+// are coerced here instead of being trusted by the controller or database layer.
+export const rideSearchQuerySchema = z.object({
+  from: z.string().trim().max(255).optional().default(""),
+  to: z.string().trim().max(255).optional().default(""),
+  date: calendarDate.optional().or(z.literal("")).default(""),
+  time: z.string().regex(timePattern, "Time must be HH:mm").optional().or(z.literal("")).default(""),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(24).default(6),
 });
 
-/** Inferred type for a validated ride-filter payload */
-export type RideFilterInput = z.infer<typeof rideFilterSchema>;
+export type RideSearchQuery = z.infer<typeof rideSearchQuerySchema>;
 
-/**
- * Parse and validate a request body against a Zod schema.
- * Throws a 400-tagged Error on failure so the error handler can respond correctly.
- */
-export function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
-  const result = schema.safeParse(body);
-  if (!result.success) {
-    const message = (result.error as ZodError).issues
-      .map((i) => `${i.path.join(".")}: ${i.message}`)
-      .join(", ");
-    const error = Object.assign(new Error(message), { statusCode: 400 });
-    throw error;
-  }
-  return result.data;
-}

@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, X, User, LogOut, AlertCircle } from "lucide-react";
 import Button from "./Button";
 import { useAuth } from "../hooks/useAuth";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const location = useLocation();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, error } = useAuth();
 
   const navItems = [
     { label: "Home", path: "/" },
@@ -19,10 +20,14 @@ export default function Header() {
 
   const isActivePath = (path: string) => location.pathname === path;
 
+  // Show logout error banner when auth error is set and user hasn't dismissed it
+  const showErrorBanner = !!error && !bannerDismissed;
+
   return (
-    <header className="fixed top-0 w-full z-50 glass-nav">
-      <div className="container mx-auto px-4 md:px-8">
-        <div className="flex items-center justify-between h-20">
+    <>
+      <header className="fixed top-0 z-50 w-full px-3 pt-3 sm:px-4">
+        <div className="container mx-auto rounded-2xl border border-white/80 bg-gradient-to-r from-white/90 via-[#f4f8ff]/90 to-[#effffb]/90 px-4 shadow-[0_10px_30px_rgba(46,123,255,0.14)] backdrop-blur-xl md:px-6">
+        <div className="flex h-[4.5rem] items-center justify-between gap-3">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-glow">
@@ -58,7 +63,7 @@ export default function Header() {
                   to="/profile"
                   className="flex items-center gap-2 pl-3 pr-1 py-1 rounded-full glass hover:border-primary/40 transition-all group"
                 >
-                  <span className="text-sm font-medium text-ink-variant group-hover:text-ink">
+                  <span className="max-w-28 truncate text-sm font-medium text-ink-variant group-hover:text-ink">
                     {user?.name?.split(" ")[0] ?? "Profile"}
                   </span>
                   <span className="w-8 h-8 rounded-full overflow-hidden bg-surface-container flex items-center justify-center border border-primary/20">
@@ -91,8 +96,11 @@ export default function Header() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 rounded-lg glass"
+            className="lg:hidden shrink-0 p-3 rounded-lg glass"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-navigation"
           >
             {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -100,7 +108,7 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden pb-6">
+          <div id="mobile-navigation" className="max-h-[calc(100dvh-6rem)] overflow-y-auto pb-4 lg:hidden">
             <nav className="glass-card p-4 flex flex-col gap-1">
               {navItems.map((item) => (
                 <Link
@@ -148,5 +156,23 @@ export default function Header() {
         )}
       </div>
     </header>
+
+    {/* Logout error banner — shown below the fixed header when auth error is set */}
+    {showErrorBanner && (
+      <div className="fixed top-[5.25rem] left-0 z-40 flex w-full justify-center px-4 pt-2 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-3 bg-danger/10 border border-danger/25 text-danger rounded-lg px-4 py-2.5 text-sm shadow-sm max-w-md w-full">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            aria-label="Dismiss"
+            className="text-danger/70 hover:text-danger transition-colors font-bold leading-none"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    )}
+  </>
   );
 }
