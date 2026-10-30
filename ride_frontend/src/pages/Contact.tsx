@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import Button from '../components/Button';
-import { submitContactMessage } from '../services/contactService';
+import axiosInstance from '../api/axiosInstance';
+import { isAxiosError } from 'axios';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -24,10 +25,9 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
-    const payload = {
-      name: formData.name.trim(), email: formData.email.trim(),
-      subject: formData.subject.trim(), message: formData.message.trim(),
-    };
+    const payload = Object.fromEntries(
+      Object.entries(formData).map(([key, value]) => [key, value.trim()])
+    );
     if (Object.values(payload).some((value) => !value)) {
       setStatus({ type: 'error', message: 'Please complete every field. Spaces alone are not valid.' });
       return;
@@ -35,16 +35,16 @@ export default function Contact() {
     setStatus({ type: null, message: '' });
     setSubmitting(true);
     try {
-      await submitContactMessage(payload);
+      await axiosInstance.post('/contact', payload);
       setStatus({
         type: 'success',
-        message: 'Thank you! Your message has been submitted.'
+        message: 'Thank you! Your message has been sent successfully.'
       });
       setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error) {
       setStatus({
         type: 'error',
-        message: error instanceof Error && error.message === 'CONTACT_RATE_LIMIT'
+        message: isAxiosError(error) && error.response?.status === 429
           ? 'Too many messages. Please wait a few minutes before trying again.'
           : 'We could not send your message. Your text is still here; please try again later.'
       });
@@ -111,7 +111,6 @@ export default function Contact() {
             <div className="glass-strong rounded-md p-5 sm:p-8 min-w-0">
               <h2 className="font-display text-xl font-semibold mb-2 text-ink">Send a message</h2>
               <p className="text-sm text-ink-variant mb-6">Send your questions or feedback to the RideShare team.</p>
-              <p className="text-xs text-ink-variant mb-5">By sending, you share your name, email and message with FormSubmit so it can forward your enquiry to our team.</p>
               <form onSubmit={handleSubmit} className="space-y-5" aria-busy={submitting}>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-ink mb-1.5">

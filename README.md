@@ -28,7 +28,7 @@ the IIT Indore community; permitted email domains are configurable.
 | Ride management | Upcoming/history views, owner cancellation and passenger departure |
 | Group chat | Membership-checked WebSocket rooms, recent history and reconnect handling |
 | Profiles | Student identity, profile image, ride history and request management |
-| Contact | FormSubmit delivery over HTTPS; inbox activation required. See [contact setup](docs/CONTACT_FORM.md) |
+| Contact | Validated support form, support notification and acknowledgement email |
 | Interface | Responsive layouts, custom date/time pickers and confirmation dialogs |
 | Protection | Input validation, CSRF headers, origin checks, rate limits and security headers |
 
@@ -81,8 +81,7 @@ flowchart TB
     Proxy <-->|"/backend/socket.io to /socket.io"| Chat
     ORM --> DB[("PostgreSQL")]
     Auth <-->|"OAuth"| Google["Google"]
-    UI -->|"Contact form over HTTPS"| FormSubmit["FormSubmit"]
-    Services -->|"Legacy /contact endpoint only"| Mail["Gmail SMTP"]
+    Services -->|"Contact mail"| Mail["Gmail SMTP"]
     API -.-> Redis[("Optional Redis")]
     Chat -.-> Redis
 ```
@@ -296,7 +295,7 @@ foreign-key relation to `User`. The diagram shows selected fields; the
 - Node.js **24.x** and npm.
 - A PostgreSQL database you are authorized to use.
 - Google OAuth web-client credentials and a registered local callback.
-- Activate FormSubmit for website contact delivery; see [contact setup](docs/CONTACT_FORM.md). SMTP credentials apply only to the legacy backend endpoint.
+- Support-email credentials; outbound SMTP access is needed to test delivery.
 - Redis only if intentionally enabling and testing shared-state mode.
 
 ### 2. Install and configure
@@ -503,7 +502,7 @@ applying database changes.
 | Transactional request/seat updates | Sustained booking-concurrency tests remain outstanding |
 | Optional shared rate limits and socket adapter | Redis provisioning and cross-worker verification are unconfirmed |
 | Initial migration and reconciliation instructions | Existing database reconciliation/baseline has not been completed |
-| Website contact submits over HTTPS to FormSubmit | Inbox activation and provider availability are required; legacy SMTP remains separate |
+| Validated and escaped support input | Gmail SMTP needs valid credentials and permitted outbound ports |
 | Automated tests and a local load probe | No independent penetration test or confirmed simultaneous-user limit |
 
 The [historical security review](docs/SECURITY_REVIEW_2026-10-27.md) describes an
